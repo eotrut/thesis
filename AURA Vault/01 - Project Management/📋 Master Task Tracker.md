@@ -1,0 +1,74 @@
+---
+tags: [project-management, tasks, tracker]
+created: 2026-03-29
+status: active
+---
+# 📋 Master Task Tracker
+
+> [!info] How to use
+> Tasks are grouped by phase. Check items as you complete them. Home dashboard pulls from this note via Dataview. Related: [[📅 Timeline & Milestones]] · [[⚠️ Risk Register]].
+
+## Phase 0 — Planning & Concept Paper
+- [x] Concept paper written and submitted (29/03/2026)
+- [x] Literature review completed
+- [x] System architecture (IPO) defined
+- [x] Hardware components identified
+- [x] Budget estimated
+- [x] Research questions & objectives locked
+- [x] Scope and delimitations defined
+
+## Phase 1 — Hardware Procurement & Assembly
+- [x] Source and purchase aluminum extrusion rails
+- [x] Purchase Arduino Mega + RAMPS 1.4
+- [ ] Purchase NEMA 23 motors (×3)
+- [ ] Purchase TB6600 drivers (×3)
+- [ ] Purchase GT2 belts, pulleys, bearings
+- [ ] Purchase 24V 30A PSU
+- [ ] Purchase spray nozzle / airbrush mechanism
+- [ ] Purchase pump and solenoid valve
+- [ ] Assemble X-axis base rail
+- [ ] Assemble Y-axis vertical column
+- [ ] Wire motors to drivers
+- [ ] Wire drivers to RAMPS 1.4
+- [ ] Test motor movement (no load)
+- [ ] Calibrate limit switches / homing
+
+## Phase 2 — Firmware & Motion Control
+- [ ] Flash Arduino with GRBL or custom firmware
+- [ ] Define G-code command set
+- [ ] Write Python serial controller script
+- [ ] Test XY movement to commanded coordinates
+- [ ] Measure positional error (motion accuracy test)
+- [ ] Tune stepper speed, acceleration, microstepping
+
+## Phase 3 — AI Model Development
+- [ ] Collect/source wall image dataset
+- [ ] Annotate images for segmentation
+- [ ] Choose model architecture (MobileNet/DeepLab or custom CNN)
+- [ ] Train segmentation model
+- [ ] Evaluate segmentation accuracy (IoU / pixel accuracy)
+- [ ] Integrate model inference into Python pipeline
+- [ ] Connect segmentation output to path planner
+- [ ] Develop color recommendation module (K-means + harmony rules)
+- [ ] Test color recommendations with evaluators (qualitative, n≥5)
+
+## Phase 4 — System Integration
+- [ ] Connect laptop AI pipeline to Arduino serial
+- [ ] Synchronize spray on/off with gantry position
+- [ ] Full dry-run test (no paint)
+- [ ] First live paint test (single color, simple shape)
+- [ ] Multi-color region test
+- [ ] Simple mural design test
+- [ ] Record all evaluation metrics
+
+## Phase 5 — Thesis Writing & Defense
+- [ ] Complete Chapter 3 (Methodology)
+- [ ] Complete Chapter 4 (Results) — after testing
+- [ ] Complete Chapter 5 (Discussion)
+- [ ] Compile full references in APA format
+- [ ] Internal review / proofreading
+- [ ] Submit draft to adviser
+- [ ] Revise based on feedback
+- [ ] Prepare defense presentation
+- [ ] Conduct mock defense
+- [ ] Final defense
