@@ -25,9 +25,9 @@ ENV/
 *.pem
 
 # --- Obsidian (workspace-local state) ---
-.obsidian/workspace.json
-.obsidian/workspace-mobile.json
-.obsidian/cache
+**/.obsidian/workspace.json
+**/.obsidian/workspace-mobile.json
+**/.obsidian/cache
 
 # --- OS ---
 .DS_Store
@@ -48,6 +48,11 @@ $RECYCLE.BIN/
 *.tmp
 *.bak
 *.zip
+
+# --- Model weights / inference test artifacts ---
+*.pt
+*.onnx
+bus.jpg
 
 # --- LaTeX (if used later) ---
 *.aux

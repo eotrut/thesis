@@ -40,7 +40,7 @@ git config --global init.defaultBranch main
 5. Clone the thesis repository:
 
 ```powershell
-cd C:\Users\eotrut\Claude\Projects
+cd C:\Users\Roehl\Claude\Projects
 git clone https://github.com/eotrut/thesis.git
 cd thesis
 ```
@@ -68,7 +68,7 @@ pip --version
 4. Create a virtual environment inside the cloned repo:
 
 ```powershell
-cd C:\Users\eotrut\Claude\Projects\thesis
+cd C:\Users\Roehl\Claude\Projects\thesis
 python -m venv venv
 venv\Scripts\activate
 ```
@@ -201,7 +201,7 @@ python -c "import serial; print(serial.__version__)"
 ## 10. Obsidian
 
 1. Download from [obsidian.md](https://obsidian.md/).
-2. Open the vault at `C:\Users\eotrut\Claude\Projects\Thesis\AURA Vault`.
+2. Open the vault at `C:\Users\Roehl\Claude\Projects\thesis\AURA Vault`.
 3. Recommended community plugins for thesis documentation (Settings → Community plugins → Browse):
    - **Dataview** — query and summarize notes (e.g. list all meeting notes, track task status across the vault)
    - **Templater** — reusable note templates (e.g. a standard "session notes" or "meeting notes" template)
@@ -255,7 +255,7 @@ Run through this list after completing all steps above, with `venv` activated:
 Once everything above is confirmed working, commit and push the environment/setup work to the repo:
 
 ```powershell
-cd C:\Users\eotrut\Claude\Projects\thesis
+cd C:\Users\Roehl\Claude\Projects\thesis
 git add .
 git commit -m "Add laptop dev environment setup (Python 3.11, CUDA 12.1, PyTorch, YOLOv8, tooling)"
 git push origin main

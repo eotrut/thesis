@@ -7,7 +7,7 @@
 - **Name:** `thesis`
 - **Visibility:** Private
 - **Owner:** kurtrobynmanabat
-- **Local path:** `C:\Users\eotrut\Claude\Projects\Thesis`
+- **Local path:** `C:\Users\Roehl\Claude\Projects\thesis`
 - **Default branch:** `main`
 
 ## Tooling
@@ -27,7 +27,7 @@
 
 ## Daily workflow
 ```bash
-cd "/c/Users/eotrut/Claude/Projects/Thesis"
+cd "/c/Users/Roehl/Claude/Projects/thesis"
 git add .
 git commit -m "message"
 git push
