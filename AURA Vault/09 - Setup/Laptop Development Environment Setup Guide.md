@@ -232,21 +232,24 @@ python -c "import roboflow; print(roboflow.__version__)" 2>$null; if ($?) { echo
 
 Run through this list after completing all steps above, with `venv` activated:
 
-- [ ] `git --version` returns a version number
-- [ ] `git clone` of the thesis repo completed without auth errors
-- [ ] `python --version` reports **3.11.x**
-- [ ] `nvidia-smi` shows the RTX 3050 and CUDA version ≥ 12.1
-- [ ] `nvcc --version` reports CUDA release 12.1
-- [ ] `python -c "import torch; print(torch.cuda.is_available())"` prints **True**
-- [ ] `torch.cuda.get_device_name(0)` prints **NVIDIA GeForce RTX 3050**
-- [ ] YOLOv8 verification script runs inference with no CUDA errors
-- [ ] `import cv2` succeeds and prints a version
-- [ ] `import serial` succeeds and prints a version
-- [ ] VS Code shows Python, Pylance, and Arduino extensions installed
-- [ ] VS Code interpreter is set to `.\venv\Scripts\python.exe`
-- [ ] Arduino IDE detects the board's COM port and Blink sketch uploads successfully
-- [ ] Obsidian vault opens at the correct folder with recommended plugins enabled
-- [ ] `import roboflow` succeeds with no error
+- [x] `git --version` returns a version number — 2.55.0.windows.2
+- [x] `git clone` of the thesis repo completed without auth errors
+- [x] `python --version` reports **3.11.x** — 3.11.5
+- [x] `nvidia-smi` shows the RTX 3050 and CUDA version ≥ 12.1 — driver 581.83, CUDA 13.0
+- [x] `nvcc --version` reports CUDA release 12.1 — confirmed release 12.1, V12.1.66
+- [x] `python -c "import torch; print(torch.cuda.is_available())"` prints **True** — torch 2.5.1+cu121
+- [x] `torch.cuda.get_device_name(0)` prints **NVIDIA GeForce RTX 3050** — "NVIDIA GeForce RTX 3050 Laptop GPU"
+- [x] YOLOv8 verification script runs inference with no CUDA errors — ran on cuda:0, detected persons/bus/skateboard
+- [x] `import cv2` succeeds and prints a version — 5.0.0
+- [x] `import serial` succeeds and prints a version — 3.5
+- [x] VS Code shows Python, Pylance, and Arduino extensions installed
+- [x] VS Code interpreter is set to `.\venv\Scripts\python.exe`
+- [x] Arduino IDE detects the board's COM port and Blink sketch uploads successfully
+- [x] Obsidian vault opens at the correct folder with recommended plugins enabled
+- [x] `import roboflow` succeeds with no error — 1.3.12
+
+> [!success] Verified 2026-07-07
+> Full environment verified end-to-end on the actual laptop (Roehl). Found and fixed along the way: venv initially had no packages installed (previous YOLO test had run against a global Python install instead), duplicate `opencv-python`/`opencv-python-headless` installed globally, stale `eotrut` paths in this guide and in [[🔧 GitHub Repo Setup]], and `bus.jpg`/`yolov8n-seg.pt`/nested `workspace.json` were tracked in git despite being ignorable artifacts. All resolved — global ML packages uninstalled, venv is now the single source of truth, docs point at the correct path, and the artifacts are untracked and gitignored.
 
 ---
 
