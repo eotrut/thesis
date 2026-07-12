@@ -1,44 +1,58 @@
 ---
 tags: [thesis, chapter-3, methodology]
 created: 2026-03-29
-status: draft-complete
+updated: 2026-07-12
+status: synced-with-manuscript
 ---
 # 📝 Chapter 3 — Methodology
 
+> [!info] Sync note
+> Updated to match the finalized manuscript: YOLOv8 (not MobileNetV3+DeepLabV3+), OpenCV homography calibration, pyserial G-code bridge, and evaluation against **external standards** rather than internal thresholds. Color reproduction (ΔE\*) removed — see [[📝 Chapter 1 - Introduction]] scope note.
+
 ## 3.1 Research Design
-This study employs a **developmental-experimental** design. The developmental component covers the iterative design, construction, and integration of the AURA prototype; the experimental component covers the controlled evaluation of its performance against defined metrics. This dual design is appropriate because the study both *builds* a novel artifact and *measures* its effectiveness.
+**Developmental-experimental** design: developmental component covers iterative design/construction/integration of the AURA prototype; experimental component covers controlled evaluation against defined metrics.
 
 ## 3.2 Development Approach
-An **iterative prototyping** approach is used, progressing through mechanical, electronic, firmware, AI, and integration stages, with testing after each stage to surface defects early. Each iteration refines the prototype toward the target capability: reliably painting a simple two-color design on a 1 m × 1 m flat board.
+**Iterative prototyping** through mechanical → electronic → firmware → AI → integration stages, testing after each. Target: reliably paint a simple multi-color design on a flat test board.
 
 ## 3.3 System Architecture
-AURA follows the Input–Process–Output model detailed in [[🏗️ System Architecture Overview]]. A camera captures the wall; a deep-learning model segments paintable regions; an AI module recommends colors; a path planner converts regions to G-code; and an Arduino Mega with RAMPS 1.4 drives three NEMA 23 motors (dual-X, single-Y) and an adaptive spray system. All intelligence runs on an RTX 3050 laptop; the Arduino executes motion and spray commands received over USB serial at 115200 baud.
+Full detail in [[🏗️ System Architecture Overview]]. Summary: camera → YOLOv8 segmentation → OpenCV homography calibration → raster toolpath generation → AI color recommendation → G-code assembly → pyserial (115200 baud) → Arduino Mega + RAMPS 1.4 → dual-X/single-Y NEMA 23 motors (TB6600) + relay-driven pump/solenoid/nozzle. All intelligence runs on the RTX 3050 laptop; the Arduino executes motion + spray only.
 
 ## 3.4 Participants
-For the qualitative evaluation of the color-recommendation module, a minimum of **five (5) evaluators** will rate recommended palettes on a 1–5 scale for visual appeal and suitability. Evaluators are selected from students and faculty familiar with design aesthetics.
+Minimum **five (5) evaluators** rate recommended color palettes on a 1–5 scale (visual coherence + suitability), per ISO/IEC 25010:2011 usability/satisfaction sub-characteristics. Evaluators drawn from students/faculty familiar with design aesthetics.
 
 ## 3.5 Instruments
-**Hardware:** 2040 aluminum extrusion frame, 3× NEMA 23 motors, 3× TB6600 drivers, Arduino Mega 2560 + RAMPS 1.4, 24V/30A PSU, GT2 belts/pulleys, linear rails, USB camera, peristaltic/diaphragm pump, solenoid valve, spray nozzle, limit switches (full list in [[🛒 Bill of Materials]]).
-**Software:** Python, PyTorch/TensorFlow, OpenCV, a MobileNetV3-DeepLabV3+ segmentation model, K-means color recommendation, and a pyserial motion controller.
+**Hardware:** 2040 aluminum extrusion frame, 3× NEMA 23 (dual-X mirrored + single-Y), 3× TB6600 drivers, Arduino Mega 2560 + RAMPS 1.4 (signal breakout only — does not power motors), 24V/30A PSU, GT2 belts/pulleys, linear rails, USB/HD camera, peristaltic pump (diaphragm fallback), solenoid valve, spray nozzle, limit switches. Full list: [[🛒 Bill of Materials]].
+
+**Software:** Python, PyTorch, Ultralytics YOLOv8, OpenCV (homography/scaling calibration), a raster toolpath generator, an AI-based color recommendation module (color-harmony rules + optional deep-learning palette recommender), and a pyserial motion controller.
+
+**Motion system parameters** (derived, not assumed): steps/mm = (motor steps/rev × microstep) / (pulley teeth × belt pitch) = (200 × 8) / (20 × 2) = **40 steps/mm** at 1/8 microstepping. TB6600 current set to ~3.0–4.0 A per driver (confirmed against each unit's DIP label). RAMPS breaks out STEP/DIR/ENABLE + endstops only; the 24V/30A PSU feeds the TB6600 drivers directly, not RAMPS' onboard motor headers.
 
 ## 3.6 Development Procedure
-1. **Mechanical:** assemble the XY gantry per [[⚙️ Mechanical Design]], ensuring squareness and dual-X synchronization.
-2. **Electronics:** wire motors, drivers, RAMPS, PSU, and spray relay per [[🔌 Electronics & Wiring]].
-3. **Firmware:** flash a G-code firmware (GRBL/Marlin variant); verify homing and commanded motion.
-4. **AI:** train and validate the segmentation model and color-recommendation module ([[🔮 Segmentation Model]], [[🎨 Color Recommendation Module]]).
-5. **Integration:** connect the laptop pipeline to the Arduino, synchronize spray with position, and run dry-runs then live paint tests.
-6. **Testing:** collect all evaluation metrics ([[🧪 Calibration & Testing Log]]).
+1. **Mechanical** — assemble XY gantry per [[⚙️ Mechanical Design]]; verify squareness, dual-X sync.
+2. **Camera + Calibration** — mount USB/HD camera; affix corner markers; compute OpenCV homography/scaling transform (pixel → mm).
+3. **AI Integration — zero-shot baseline** — deploy YOLOv8 (Ultralytics, CUDA) with COCO-pretrained weights; evaluate via IoU/mAP (COCO protocol).
+4. **Optional fine-tuning** — only if zero-shot underperforms: Roboflow-labeled custom dataset → Kaggle Tesla T4 fine-tune → redeploy on RTX 3050 → re-evaluate on the same test set.
+5. **Toolpath generation** — raster (boustrophedon) scan per region, calibrated to mm, 10–20% pass overlap.
+6. **Color recommendation module** — harmony-rule-based (+ optional deep-learning) palette generation; evaluated by the participant group.
+7. **Arduino firmware** — GRBL-compatible command set (`G1`, `G28`, `M3`/`M5`, `G4`) → step/direction pulses + relay control; tested standalone before integration.
+8. **pyserial bridge** — 115200 baud, blocking handshake (`ok` per line); one retry on timeout, then halt + spray-off on second failure.
+9. **System integration & test runs** — full pipeline on a physical wall; motion, segmentation, spray consistency, and coverage uniformity measured.
+10. **Mural / multi-region tests** — extended trials with multiple color regions if end-to-end tests pass.
 
-## 3.7 Evaluation Framework
-| Metric | Type | Method | Indicator |
-|---|---|---|---|
-| Motion Accuracy | Quantitative | Positional error (mm) | Lower = better |
-| Segmentation Accuracy | Quantitative | % correct regions vs ground truth (IoU, pixel acc) | Higher = better |
-| Spray Consistency | Quantitative | Uniformity of paint distribution (visual/pixel) | More uniform = better |
-| Coverage Uniformity | Quantitative | % area evenly painted (no gaps/overlaps) | Higher = better |
-| Color Reproduction Accuracy | Quantitative | RGB/HSV difference (recommended vs applied) | Smaller diff = better |
-| Color Recommendation Quality | Qualitative | User rating 1–5 (appeal + suitability) | Higher = better |
-| Overall Painting Output Quality | Qualitative | Visual inspection (smoothness, alignment, finish) | Higher = better |
+## 3.7 Evaluation Framework (external standards, not internal thresholds)
+
+| Metric | Type | Reference Standard | Method | Indicator |
+|---|---|---|---|---|
+| Motion (Positional) Accuracy | Quantitative | ISO 9283:1998 | Commanded vs. measured pose (mm) | Lower error/spread = better |
+| Segmentation Accuracy | Quantitative | COCO protocol / Ultralytics YOLOv8 eval | IoU, mAP @ IoU ≥ 0.50 | Higher = better |
+| Spray Consistency | Quantitative | ASTM D4147 | Uniformity of applied coating | More uniform = better |
+| Coverage Uniformity | Quantitative | ASTM D3270 | % area evenly coated, no gaps/excess overlap | Higher = better |
+| Color Recommendation Quality | Qualitative | ISO/IEC 25010:2011 | 5-point Likert (coherence, suitability, satisfaction) | Higher mean = better |
+| Overall System Integration | Qualitative | IEEE 1872-2015 | Structured end-to-end integration assessment | Higher = better |
+
+> [!warning] Removed row
+> "Color Reproduction Accuracy (CIE ΔE\*)" has been **removed** from this table. AURA does not mix/synthesize paint color, so there is no way to instrument a comparison between recommended and applied color. Only recommendation *quality* (the palette itself) is evaluated.
 
 ## 3.8 Data Analysis
-Quantitative metrics are analyzed using **descriptive statistics** (means, standard deviations) and **error metrics** (mean positional error in mm, mean IoU, mean ΔE). Qualitative ratings are summarized descriptively (mean rating, distribution). Where a comparison to a manual/non-adaptive baseline is made, results are interpreted against hypotheses **H₀/H₁** from [[📝 Chapter 1 - Introduction]]. Target thresholds (e.g., positional error ≤ 2 mm, mIoU > 0.65, pixel accuracy > 75%) define prototype adequacy.
+Quantitative metrics: descriptive statistics (means, SDs) and error metrics (mean positional error mm, mean IoU/mAP). Qualitative ratings: descriptive summary (mean, distribution). Results interpreted against **H₀/H₁** from [[📝 Chapter 1 - Introduction]]. Any deviations feed back into the next prototyping iteration.

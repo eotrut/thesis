@@ -1,49 +1,59 @@
 ---
 tags: [thesis, chapter-1, introduction]
 created: 2026-03-29
-status: draft-complete
+updated: 2026-07-12
+status: synced-with-manuscript
 ---
 # 📝 Chapter 1 — Introduction
 
+> [!info] Sync note
+> This note now mirrors the finalized manuscript (`aura_thesis_rewrite.md`). The manuscript's Introduction is a much longer, fully-cited prose treatment (~3,900 words, RRL 2021–2026) — this note captures the same claims and structure at synthesis length for quick reference and editing. See [[📚 Literature Review Master]] for the full thematic breakdown.
+
 ## Background of the Study
-Wall painting remains a labor-intensive, time-consuming, and often hazardous task, particularly at height or across large surfaces. Manual painting is prone to inconsistency in coverage, uneven application, and human fatigue, while exposure to fumes and elevated work poses safety risks. Automation has been explored to address these limitations, and prior systems demonstrate that robotic platforms can paint flat walls with reduced human effort (Kumote et al., 2022; Patil et al., 2021; RSIS International, 2025). However, these systems typically rely on **pre-programmed motion**: they reproduce fixed paths without perceiving the wall or reasoning about the design to be applied.
+Manual wall painting is labor-intensive, hazardous, and inconsistent: painters face elevated risk of respiratory impairment and asthma from VOC exposure (Sekhar et al., 2024; Arrandale et al., 2025; Boadu et al., 2023; Patel et al., 2024; Bello et al., 2020), plus fall risk and musculoskeletal strain from working at height (NIOSH, 2024). In the Philippines, DOLE Department Order No. 13 s.1998 and RA 11058 codify the resulting safety obligations. Prior automated wall-painting robots (Kumote et al., 2022; Patil, 2021; Megalingam et al., 2020; Sowmya et al., 2024; Thale et al., 2022; Shamseldin, 2024; Zhou et al., 2022; Al-Ayoub et al., 2024) demonstrate that the physical task can be automated, but they operate on **pre-programmed, fixed motion** — they do not perceive the wall or reason about the design. Parallel advances in deep-learning perception (Bjekic et al., 2023; YOLOv8/Ultralytics; He et al., 2017 Mask R-CNN lineage) and AI color recommendation (Yuan et al., 2021; Wu et al., 2023) have matured in isolation, rarely closing the loop into a physical actuator.
 
-Parallel advances in artificial intelligence and computer vision have made it possible for machines to *understand* visual scenes. Convolutional neural networks can segment walls from ordinary 2D images (Bjekic et al., 2023), and deep learning has been applied to spray-trajectory generation (Tiboni et al., 2022) and segmentation-guided spray planning (Liu & Cheng, 2024). Yet these capabilities are largely demonstrated in isolation or on industrial hardware requiring 3D sensing, leaving a gap between intelligent perception and affordable, integrated painting systems.
-
-This study proposes **AURA (Autonomous Unified Robotic Artist)**, an AI-assisted autonomous wall-painting robot that unifies deep-learning spatial segmentation, AI color recommendation, XY-gantry motion control, and adaptive spray control into a single prototype built within an undergraduate budget. AURA aims to move beyond mechanical reproduction toward a system that perceives the wall, decides where and in what colors to paint, and executes the result autonomously.
+**AURA (AI-Based Autonomous Wall Painting Robot)** unifies deep-learning spatial segmentation (YOLOv8), OpenCV-based homography calibration, raster toolpath generation, pyserial-mediated Arduino adaptive spray control, and AI-based color recommendation into a single undergraduate-scale prototype: a 2D vertical gantry (2040 aluminum extrusion, dual-X + single-Y NEMA 23 motors, TB6600 drivers, Arduino Mega + RAMPS 1.4), a USB/HD camera, and a solenoid-actuated spray subsystem. Full RRL synthesis: [[📚 Literature Review Master]].
 
 ## Statement of the Problem
-Existing automated wall-painting systems execute predetermined motions and cannot independently identify paintable regions, recommend coherent color schemes, or adapt paint application to the surface. Meanwhile, the deep-learning methods capable of such perception are typically validated in isolation or on costly industrial platforms. There is therefore no accessible, integrated system that combines visual understanding, color intelligence, motion control, and adaptive spraying for autonomous wall painting at prototype scale. This study addresses that gap.
+Wall painting remains manual, labor-intensive, and hazardous. Existing automated systems use predetermined paths and cannot adapt to wall conditions; existing robotic/AI/vision systems are typically developed in isolation rather than as one integrated pipeline. This study develops an AI-based autonomous wall-painting system to close that gap.
 
-## Research Questions
-1. How can a robotic wall-painting system be designed for accurate movement using an XY gantry?
-2. How can deep-learning-based spatial segmentation identify and map paintable wall regions?
-3. How can an adaptive spray-control system ensure uniform paint application?
-4. How can computer vision, AI, and robotics be integrated into one unified automated painting system?
-5. How can an AI color-recommendation system generate visually coherent color combinations?
-6. How effective is the system in painting accuracy, spray consistency, coverage uniformity, design alignment, and color reproduction accuracy?
+Research questions:
+1. How can a 2D vertical gantry (NEMA 23 + TB6600 + Arduino Mega/RAMPS 1.4) achieve accurate, repeatable motion across a flat wall?
+2. How can YOLOv8 instance segmentation (zero-shot-first, fine-tuned only if necessary) identify and map paintable regions from camera images?
+3. How can OpenCV-based homography calibration, seeded from physical corner markers, convert pixel-space masks into real-world millimeter coordinates?
+4. How can a raster toolpath generator produce spray trajectories transmitted as G-code-style commands (pyserial → Arduino Mega), and how reliably does the microcontroller execute them?
+5. How can an AI-based color recommendation module generate suitable, visually coherent color combinations?
+6. How effective is the system in terms of painting accuracy, segmentation accuracy, spray consistency, coverage uniformity, and alignment with the intended design in color and coverage?
+
+> [!warning] Scope correction (2026-07)
+> An earlier draft of RQ6 included "color reproduction accuracy" (recommended vs. applied paint color). **Removed** — AURA sprays pre-loaded paint and does not mix/synthesize color, so there is no mechanism to verify the applied color matches the recommendation. See Scope and Delimitation below.
 
 ## Scope and Delimitation
-The study is limited to **flat wall surfaces** and **2D movement**, targeting **simple mural designs** in **controlled test environments** at **prototype-level** implementation. It does **not** address 3D or curved surfaces, autonomous navigation beyond the working frame, commercial or industrial scale, or real-time continual learning. The prototype target is the reliable painting of a simple two-color design on a 1 m × 1 m flat board.
+AURA covers: a 2D XY gantry (2040 extrusion, GT2 belts, linear rails, 3× NEMA 23, TB6600); YOLOv8 (Ultralytics/PyTorch/CUDA) instance segmentation on an RTX 3050 laptop; USB/HD camera vision + OpenCV homography/scaling calibration; adaptive spray control (pump, solenoid, nozzle) via Arduino; an AI-based color recommendation module; Arduino Mega + RAMPS 1.4 + 24V DC, driven from Python via pyserial with G-code-style commands. Evaluation covers motion accuracy, segmentation accuracy, spray consistency, painting output quality, and color recommendation quality (visual coherence/suitability).
+
+Limited to: flat wall surfaces; 2D movement only; simple mural designs in controlled environments; prototype-level implementation; zero-shot-first YOLOv8 evaluation strategy (fine-tune on Roboflow/Kaggle T4 only if needed).
+
+Does **not** include: 3D/curved surfaces; fully autonomous navigation beyond the working frame; commercial/industrial scale; real-time continual learning; **verification that the painted output's color matches the AI-recommended color** — the system applies pre-loaded paint and performs no paint mixing or color synthesis, so color reproduction accuracy (CIE ΔE\*) is explicitly out of scope. Only color *recommendation* quality (the coherence/suitability of the suggested palette itself) is evaluated.
 
 ## Objectives
-**General Objective.** To develop an AI-based autonomous wall-painting system that combines deep learning, robotics, color recommendation, and adaptive spray control.
+**General Objective.** Develop an AI-based autonomous wall-painting system combining deep learning, robotics, color recommendation, and adaptive spray control to improve accuracy and efficiency.
 
 **Specific Objectives.**
-1. Design and develop a 2D XY-gantry robotic system for precise wall-surface movement.
-2. Develop a deep-learning spatial-segmentation model for identifying paintable regions.
-3. Implement an adaptive spray-control system regulating paint flow.
-4. Integrate computer vision, motion control, color recommendation, and spray into one system.
-5. Develop an AI color-recommendation module for visually coherent color combinations.
-6. Evaluate motion accuracy, segmentation accuracy, spray consistency, coverage uniformity, design-to-output alignment, and color performance.
-7. Assess the system's capability in executing simple mural designs and multi-region painting.
+1. Design/develop a 2D XY-gantry robotic system (2040 extrusion, GT2 belts, rails, 3× NEMA 23, TB6600, Arduino Mega + RAMPS 1.4, 24V DC) for precise motion.
+2. Develop YOLOv8 (Ultralytics) instance segmentation on an RTX 3050 (CUDA) for paintable-region identification — zero-shot first, fine-tuned via Roboflow/Kaggle T4 only if needed.
+3. Implement OpenCV-based homography/scaling calibration (physical corner markers) mapping pixel masks to millimeter coordinates, and generate raster toolpaths in Python.
+4. Implement adaptive spray control (Arduino-actuated pump/solenoid/nozzle) driven by pyserial G-code-style commands.
+5. Integrate vision, motion control, color recommendation, and spray into one unified system.
+6. Develop an AI-based color recommendation module for visually coherent color combinations.
+7. Evaluate motion accuracy, segmentation accuracy, spray consistency, coverage uniformity, design-to-output alignment, and color recommendation quality.
+8. Assess capability on simple mural/multi-region painting tasks.
 
 ## Rationale / Significance
-AURA contributes an **integrated, affordable proof-of-concept** that demonstrates intelligent wall painting is achievable without industrial hardware. For the construction and finishing domain, where automation remains limited (Faheem et al., 2024), it shows a path toward safer, more consistent painting. For computer engineering education, it demonstrates the practical integration of deep learning, embedded control, and mechatronics on a constrained budget. Its color-recommendation component further extends automation from *how* to paint toward *what* to paint, an under-explored dimension in prior work.
+Automation addresses safety (DOLE DO-13 s.1998, RA 11058), efficiency, and quality gaps in manual painting. AURA's core innovation is the **unified pipeline** from perception to physical application — no cited prior system connects deep-learning segmentation, calibrated coordinate mapping, and adaptive spray on one reproducible undergraduate-scale prototype (see [[🔍 Research Gaps & Justification]]). Framed via the Triple Bottom Line (worker safety, operational efficiency, material-waste reduction) and aligned to SDG 8, 9, 11, and 12.
 
 ## Hypothesis
-> [!note] Hypotheses
-> **H₀:** The system does not show significant improvement in accuracy, spray consistency, coverage, and color performance compared to manual or non-adaptive approaches.
-> **H₁:** The system significantly improves painting accuracy, spray consistency, coverage, and color performance through deep-learning segmentation, AI color recommendation, adaptive spray control, and robotic automation.
+> [!note] Hypotheses (updated — "color reproduction" replaced by "color performance")
+> **H₀:** The system does not show significant improvement in painting accuracy, spray consistency, coverage, and color performance compared to manual/non-adaptive approaches.
+> **H₁:** The system significantly improves painting accuracy, spray consistency, coverage, and color performance through YOLOv8 segmentation, OpenCV homography calibration, raster toolpath generation, pyserial-mediated adaptive spray control, and AI color recommendation.
 
 *See also [[📚 Literature Review Master]], [[🔍 Research Gaps & Justification]], and [[🏗️ System Architecture Overview]].*

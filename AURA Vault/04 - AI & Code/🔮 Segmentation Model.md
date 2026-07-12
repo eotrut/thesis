@@ -1,55 +1,50 @@
 ---
 tags: [ai, segmentation, deep-learning]
 created: 2026-03-29
-status: active
+updated: 2026-07-12
+status: synced-with-manuscript
 ---
 # 🔮 Segmentation Model
 
 > [!info] Related
 > [[🧠 AI & Software Design]] · [[📐 Path Planning & G-code Generation]] · [[Bjekic 2023 - Wall Segmentation CNN]] · Code: [[segmentation_inference.py]]
 
-## Problem Definition
-Given a wall image from the fixed camera, output a **per-pixel mask** identifying **paintable regions**. Binary (paintable / not) for the prototype; optionally multi-class per design zone later.
+> [!warning] Sync note (2026-07-12) — superseded decision
+> This note previously specified **MobileNetV3 + DeepLabV3+** trained on ADE20K + a custom set. That plan is **replaced** by **YOLOv8 (Ultralytics) instance segmentation**, evaluated **zero-shot-first** against COCO-pretrained weights, with custom fine-tuning as a conditional fallback only. Rationale and full citation trail: [[📚 Literature Review Master]] Theme 3.
 
-## Dataset Options
+## Problem Definition
+Given a wall image from the fixed camera, output an **instance-segmentation mask** identifying **paintable regions**.
+
+## Evaluation Strategy — Zero-Shot-First
+**Phase 1 (default): Zero-shot baseline.** Deploy YOLOv8 on the RTX 3050 (CUDA, Ultralytics library) using pre-trained COCO weights, unmodified. Run inference on captured wall images and evaluate the resulting masks using **IoU** and **mAP**, following the COCO evaluation protocol — the same metrics used by Ultralytics' own YOLOv8 evaluation framework. This determines whether the system can proceed *without* a custom dataset at all.
+
+**Phase 2 (conditional fallback): Fine-tuning.** Triggered *only if* Phase 1 metrics fall below acceptable thresholds. A custom dataset is prepared: wall images collected and annotated with instance-segmentation polygons in **Roboflow**, augmented within the Roboflow workflow, uploaded to **Kaggle**, and used to fine-tune YOLOv8 on a **Tesla T4 GPU**. Resulting weights are redeployed on the RTX 3050 laptop and re-evaluated on the same held-out test set used in Phase 1.
+
+## Dataset Options (if Phase 2 is triggered)
 | Option | Pros | Cons |
 |---|---|---|
-| **ADE20K** (has `wall` class) | Large, labeled, free | General scenes, not painting-specific |
-| **Custom annotated** (LabelMe/CVAT) | Matches real test walls | Time cost (R-13) |
-| **Bjekic-style** wall set | Directly on-task | Availability |
-**Plan:** pretrain/transfer on ADE20K, fine-tune on a **small custom binary set** of the actual test walls.
+| COCO-pretrained weights (default) | No labeling cost; strong general-object priors | Not painting-specific |
+| Roboflow-labeled custom set | Matches real test walls | Time cost (annotation effort) |
+| ADE20K (`wall` class) | Large, free, labeled | General scenes, not painting-specific — considered as a fallback pretraining source if Roboflow data proves too limited |
 
-## Chosen Architecture — MobileNetV3 + DeepLabV3+
-> [!note] Why
-> Real-time-capable on RTX 3050, fits **< 4GB VRAM**, good mIoU on scene segmentation. MobileNetV3's depthwise-separable convolutions keep the model small; DeepLabV3+'s ASPP head captures multi-scale context (useful for large flat wall regions).
-
-**Alternative considered — U-Net:** simpler, excellent for **binary masks**; the fallback if ADE20K multi-class training proves unstable on 4GB.
-
-## Training Procedure
-1. Load MobileNetV3 backbone **pretrained on ImageNet**.
-2. Attach DeepLabV3+ head; freeze backbone initially, train head.
-3. Unfreeze and **fine-tune** on custom wall images.
-4. Use **AMP (mixed precision)**, batch size 4, augmentation (flip, jitter, rotate).
+## Why YOLOv8, Not MobileNetV3 + DeepLabV3+
+> [!note]
+> YOLOv8 is real-time-capable on the RTX 3050 with CUDA acceleration and, critically, ships with strong COCO-pretrained weights that generalize well enough for a **zero-shot-first** strategy — avoiding the labeling/training cost of a from-scratch segmentation model unless it proves necessary. This also aligns AURA's evaluation directly with the COCO benchmark and Ultralytics' own evaluation tooling, which is the reference standard cited in [[📝 Chapter 3 - Methodology]].
 
 ## I/O Spec
-- **Input size:** 512×512 (fallback 384×384).
-- **Output:** per-pixel class mask (same resolution, resized back to source).
+- **Input:** camera frame (preprocessed/normalized).
+- **Output:** per-instance segmentation mask(s) identifying paintable regions, at source resolution (or resized back to it).
 
 ## Post-Processing
 ```
-mask -> morphological clean (open/close) -> contour extraction ->
-        coordinate grid -> path_planner input
+YOLOv8 masks -> morphological clean (open/close) -> contour extraction ->
+                OpenCV homography/scaling calibration (pixel -> mm) ->
+                path_planner input
 ```
 
 ## Evaluation
-- **mean IoU (mIoU)**, **pixel accuracy**, **boundary precision**.
-- **VRAM math:** batch 4 @ 512×512 with MobileNetV3-DeepLab ≈ **~2.5 GB** → safe on 4GB.
-
-## Realistic Prototype Targets
-| Metric | Target |
-|---|---|
-| Pixel accuracy | **> 75%** |
-| mIoU | **> 0.65** |
+- **IoU** and **mAP at IoU ≥ 0.50** — the COCO-protocol convention, matching Ultralytics' YOLOv8 evaluation framework. This is the reference-standard metric cited in the manuscript, not an internally-invented threshold.
+- Phase 1 vs. Phase 2 metrics are compared on the same held-out test set to justify (or rule out) the fine-tuning step.
 
 > [!tip] "Good enough" for the thesis
-> The mask only needs to be accurate enough that the **raster planner** fills the right area. Small boundary errors are absorbed by spray overlap. Perfect segmentation is not required — reliable region identification is.
+> The mask only needs to be accurate enough that the **raster planner** fills the right area. Small boundary errors are absorbed by spray overlap. Perfect segmentation is not required — reliable region identification is, and the zero-shot-first strategy means fine-tuning effort is spent only if that reliability isn't already there.

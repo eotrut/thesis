@@ -1,37 +1,48 @@
 ---
 tags: [research, literature-review, synthesis]
 created: 2026-03-29
-status: active
+updated: 2026-07-12
+status: synced-with-manuscript
 ---
 # 📚 Literature Review Master
 
 > [!info] Purpose
-> A *thematic synthesis* of the literature — not a list of summaries. Feeds directly into [[📝 Chapter 2 - Review of Related Literature]]. Individual paper notes live in `02 - Research/References/`. Gaps are consolidated in [[🔍 Research Gaps & Justification]].
+> A *thematic synthesis* of the literature — not a list of summaries. Feeds directly into [[📝 Chapter 2 - Review of Related Literature]]. Individual paper notes for the original 10 references live in `02 - Research/References/`; the ~70 additional citations added in the 2026-07 RRL expansion (occupational-health, HRC/safety, CNC-hardware, and expanded AI/color-recommendation literature) are tracked here and in the manuscript's References list, not yet as individual atomic notes. Gaps are consolidated in [[🔍 Research Gaps & Justification]].
+
+## Theme 0 — Occupational Hazards and the Case for Automation (new, 2026-07)
+Sekhar et al. (2024), Arrandale et al. (2025), Boadu et al. (2023), Patel et al. (2024), and Bello et al. (2020) collectively quantify the health burden of manual painting — elevated respiratory disease odds, carcinogen/sensitizer exposure, and biomonitoring evidence of inadequate exposure control even where PPE is used. NIOSH (2024) frames construction robotics as displacing workers from the most hazardous tasks. Philippine obligations: DOLE DO-13 s.1998, RA 11058.
+**Why this matters for AURA:** establishes the safety motivation independent of the productivity argument — automation is framed as a public-health intervention, not just an efficiency gain.
 
 ## Theme 1 — Mechanical Wall Painting Automation
+[[Kumote 2022 - Auto Wall Painting Robot]] and [[Patil 2021 - Autonomous Wall Painting Robot]] demonstrate XY-based platforms driven by pre-programmed motion; Megalingam et al. (2020) adds an earlier mecanum-wheeled/cascade-lift variant; Sowmya et al. (2024) lowers the cost floor further. Rudzuan (2019) extends to a gantry spray system; [[Tawade 2024 - XY Gantry Material Handling]] validates the XY-gantry kinematics AURA reuses. Thale et al. (2022) and Shamseldin (2024) push into higher-stakes deployment; Zhou et al. (2022) and Al-Ayoub et al. (2024, *PaintBot*) represent the industrial end. [[RSIS 2025 - Arduino Wall Painting Robot]] confirms feasibility at Arduino-class budget. Review-level evidence (Cai et al., 2019; Attalla et al., 2023; Xu et al., 2025; Brosque et al., 2022) shows the field is active but fragmented.
 
-The earliest and most consistent thread in the literature is the mechanical automation of wall painting. [[Kumote 2022 - Auto Wall Painting Robot]] and [[Patil 2021 - Autonomous Wall Painting Robot]] both demonstrate XY-based painting platforms driven by pre-programmed motion, with Kumote adding sensor feedback for wall detection. Rudzuan (2019) extends this to a gantry spray system with multi-axis control, and [[Tawade 2024 - XY Gantry Material Handling]] validates the XY-gantry kinematics that AURA reuses for its motion stage. At the applied end, [[RSIS 2025 - Arduino Wall Painting Robot]] shows a low-cost Arduino-driven build closely matching AURA's budget class, while Al Mawali & Hussain (2023) introduce a color sensor and a color database to select paint.
+**What exists:** reliable XY/gantry motion, spray end-effectors, Arduino-class controllers, sensor feedback.
+**The gap:** fixed, pre-programmed paths — no perception of the wall, no reasoning about color.
+**How AURA addresses it:** keeps the proven XY-gantry + Arduino backbone, replaces fixed programming with a YOLOv8 perception layer + AI color recommender.
 
-**What exists:** reliable XY/gantry motion, roller/spray end-effectors, Arduino-class controllers, and basic sensor feedback.
-**The gap:** these systems execute *fixed, pre-programmed* paths. They do not *perceive* the wall to decide **where** paint should go, nor reason about **which colors** to apply. Painting is mechanical reproduction, not visual understanding.
-**How AURA addresses it:** AURA keeps the proven XY-gantry + Arduino motion backbone but replaces fixed programming with a **deep-learning perception layer** that segments paintable regions and an **AI color recommender**, turning a "plotter with paint" into a system that decides its own targets.
+## Theme 2 — Human–Robot Collaboration and Safety (new, 2026-07)
+M. Zhang et al. (2023), Sun et al. (2023), Earnest et al. (2026), and Okpala et al. (2023) establish that mechanical/psychosocial risk dominates when robots share human workspace, and that adaptive programming + HRI interface design are the field's leading research themes.
+**Relevance:** motivates framing AURA as a fixed-envelope apparatus operating on a defined wall section — minimizing the interaction-hazard class this literature documents.
 
-## Theme 2 — AI & Computer Vision in Robotic Systems
+## Theme 3 — AI & Computer Vision for Wall Segmentation (updated, 2026-07)
+[[Bjekic 2023 - Wall Segmentation CNN]] remains the direct precedent (CNN wall/non-wall classification). Instance segmentation has matured from He et al. (2017, Mask R-CNN) through UNet++ (Zhou et al., 2019) to the YOLO family: YOLOv8 (Jocher et al., 2023), evaluated on the COCO protocol (Lin et al., 2014), with strong recent applications — Zhang et al. (2024, YOLOv8-CM), Lin et al. (2025), Wang et al. (2023, BL-YOLOv8), Guan et al. (2025, YOLOv8+SAM). Ni et al. (2023) and R. Zhang et al. (2023) survey the broader scene-understanding/segmentation landscape.
+**What exists:** mature CNN/YOLO segmentation for walls and scenes at real-time speed.
+**The gap:** demonstrated in isolation, or on 3D/industrial hardware unavailable to an undergraduate prototype.
+**How AURA addresses it:** adopts **YOLOv8 (Ultralytics)**, zero-shot-first against COCO-pretrained weights — explicitly chosen (superseding an earlier MobileNetV3+DeepLabV3+ plan, see [[🔮 Segmentation Model]]) because the zero-shot/transfer-learning literature shows COCO backbones generalize well enough that custom fine-tuning becomes optional, not required.
 
-A second thread applies deep learning to visual understanding for robots. [[Bjekic 2023 - Wall Segmentation CNN]] is the most directly relevant: it segments walls from single 2D images using a CNN, which is precisely the perception primitive AURA needs. [[Tiboni 2022 - PaintNet]] and [[Liu & Cheng 2024 - Semantic Segmentation Spray]] push further into spray robotics — PaintNet learns spray trajectories from 3D point clouds, and Liu & Cheng combine semantic segmentation with trajectory optimization for spray robots. On the inspection side, Shaikh & Kokate (2025) and [[Nimje 2025 - AI Vision Panel Defects]] report deep-vision surface/defect analysis exceeding 95% accuracy, and Ni et al. (2023) survey deep-learning scene understanding for autonomous robots.
+## Theme 4 — Spray Systems, Trajectory Planning, and Hardware Precision (expanded, 2026-07)
+Rudzuan et al. (2019) and Kiran & Prabhu (2020) establish gantry-mounted spray control; Chen et al. (2020), Bastida et al. (2023), Gabbar et al. (2024), and Hua et al. (2024) show that coating-quality gains come from geometry-informed trajectory planning, not the sprayer alone (Hua et al. cut coating-thickness variance from 51.9 μm² to 3.64 μm²). On the hardware-precision side — directly relevant since AURA runs an identical Arduino Mega + TB6600 + NEMA 23 stack — Wahjudi et al. (2025), Muas et al. (2026), Suresh et al. (2025), Elgeme et al. (2025), Das et al. (2024), and Ademi et al. (2025) provide realistic accuracy/repeatability benchmarks against which AURA's own ISO 9283:1998 motion evaluation can be interpreted.
+**The gap:** adaptive spray control tied to *perception* remains under-explored at prototype scale.
+**How AURA addresses it:** times solenoid/pump actuation to gantry position via the pyserial handshake (see [[💧 Spray System Design]], [[🖥️ Serial Communication Protocol]]), coordinated with segmentation output.
 
-**What exists:** mature CNN segmentation for walls and scenes, learned spray trajectories, and high-accuracy visual inspection.
-**The gap:** these capabilities are demonstrated in **isolation** — segmentation *or* trajectory learning *or* inspection — and several (PaintNet, Liu & Cheng) assume **3D point clouds and industrial hardware** unavailable to an undergraduate prototype. None couple *lightweight 2D segmentation* to *low-cost gantry actuation* end-to-end.
-**How AURA addresses it:** AURA adopts a lightweight 2D segmentation model (MobileNetV3 + DeepLabV3+, per [[🔮 Segmentation Model]]) explicitly chosen to run on a 4GB RTX 3050, and wires its output through a raster path planner to physical motion — closing the perception-to-actuation loop on affordable hardware.
+## Theme 5 — Deep Learning + Spray-Control Integration
+Tiboni et al. (2022, *PaintNet*), Liu et al. (2024), Cheng et al. (2025), and He et al. (2026) demonstrate that spatial understanding can directly drive spray-control decisions — but on industrial platforms with 3D sensing.
+**How AURA addresses it:** validates the same perceive-then-spray principle on 2D/undergraduate-scale hardware.
 
-## Theme 3 — Intelligent Control & Adaptive Systems
-
-The third thread concerns intelligence and adaptivity in control. [[Aziz 2026 - 4DOF SCARA ML]] models a 4-DOF SCARA arm and layers machine learning (SVM, Random Forest) onto its kinematics, showing ML can refine robotic control. Kiran & Prabhu (2020) review nano-spray painting robots and highlight flow/atomization control as the decisive quality factor. IEEE (2022) surveys autonomous robotic systems and sensor integration, and [[Faheem 2024 - AI Robotics Construction]] frames AI + robotics as an emerging force in construction automation, of which wall finishing is a natural sub-domain.
-
-**What exists:** evidence that ML improves control, that spray/flow control governs finish quality, and that construction is a legitimate application domain.
-**The gap:** adaptive *spray* control tied to *perception* is under-explored at the prototype scale — most adaptivity is in arm kinematics, not in coordinating **where to spray, how much, and in what color** as one loop.
-**How AURA addresses it:** AURA treats spray as an *adaptive* subsystem (solenoid + pump timed to gantry position, per [[💧 Spray System Design]]) coordinated with segmentation output and color recommendation — integrating perception, motion, and flow rather than optimizing any one in isolation.
+## Theme 6 — AI-Based Color Recommendation (expanded, 2026-07)
+Yuan et al. (2021, *InfoColorizer*) and Wu et al. (2023) show deep-learning palette recommendation is mature and user-validated; Koh (2023), Li et al. (2025), and Ananya et al. (2025) extend the space further.
+**The gap:** painting-robot literature treats color as fixed or database-looked-up, never AI-recommended as a first-class module.
+**How AURA addresses it:** an AI-based color recommendation module ([[🎨 Color Recommendation Module]]) generates palettes evaluated by human raters (ISO/IEC 25010:2011-framed), explicitly *not* verified against applied paint color (out of scope — no paint-mixing capability).
 
 ## Overall Synthesis — The Gap AURA Fills
-
-Across all three themes, the literature has independently matured (a) affordable XY/gantry painting mechanics, (b) deep-learning 2D scene/wall segmentation, and (c) intelligent/adaptive control — but **no accessible, undergraduate-scale system unifies perception, color reasoning, motion, and adaptive spray into a single automated wall-painting pipeline.** Prior painting robots are blind and pre-programmed; prior vision work is disembodied or demands industrial 3D sensing; prior adaptive control targets arms, not integrated painting. AURA's contribution is precisely this **integration on a PHP ≤35,000 budget**: lightweight segmentation and AI color recommendation driving a dual-motor XY gantry with adaptive spray — demonstrating that intelligent, self-directed wall painting is achievable without industrial hardware.
+Across all themes, the literature has independently matured (a) the occupational-safety case for automation, (b) affordable XY/gantry mechanics, (c) deep-learning 2D wall/scene segmentation (now anchored on YOLOv8), (d) geometry-informed spray trajectory planning, (e) the specific Arduino/TB6600/NEMA23 hardware-precision envelope, and (f) AI-based color recommendation — but **no accessible, undergraduate-scale system unifies perception, calibrated coordinate mapping, color recommendation, and adaptive spray into one reproducible pipeline, benchmarked against recognized external standards (ISO 9283:1998, COCO, ASTM D4147/D3270, ISO/IEC 25010:2011, IEEE 1872-2015).** AURA's contribution is precisely this integration.

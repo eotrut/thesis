@@ -1,14 +1,16 @@
 ---
 tags: [dashboard, moc, aura]
 created: 2026-03-29
+updated: 2026-07-12
 status: active
 ---
 # 🏠 AURA — Home
 
-> **AURA — Autonomous Unified Robotic Artist**
-> *Deep Learning-Based Autonomous Wall Painting Robot*
+> **AURA — AI-Based Autonomous Wall Painting Robot**
+> *AURA: An AI-Based Autonomous Wall Painting Robot Integrating Deep Learning Segmentation, Color Recommendation, and Adaptive Spray Control*
 > Bachelor of Science in Computer Engineering — School of Engineering and Architecture
 > **Holy Angel University**, Angeles City, Pampanga, Philippines
+> Researchers: **Manabat, Kurt Robyn A.** · David, Reymon Jr G. · Usi, Lester
 > Concept Paper submitted: **29 March 2026**
 
 ---
@@ -59,9 +61,13 @@ status: active
 
 1. **Dual X-axis NEMA 23 motors** to prevent gantry racking; single motor on Y-axis.
 2. **TB6600 drivers over A4988** — NEMA 23 draws up to ~4.5A, far beyond A4988's limit.
-3. **Arduino Mega 2560 + RAMPS 1.4** as the motion backbone, running a G-code firmware (GRBL/Marlin variant).
-4. **Laptop (RTX 3050) does all AI inference**; Arduino only executes motion + spray commands over USB serial.
-5. **Lightweight segmentation** (MobileNetV3 + DeepLabV3+) to fit inside the 4GB VRAM budget; raster-scan path planning for reliability.
+3. **Arduino Mega 2560 + RAMPS 1.4** as the motion backbone, used strictly as a STEP/DIR/endstop breakout — RAMPS does not power the motors. The 24V/30A PSU feeds the TB6600 drivers directly.
+4. **Laptop (RTX 3050) does all AI inference**; Arduino only executes motion + spray commands over USB serial (pyserial, 115200 baud, GRBL-style G-code).
+5. **YOLOv8 (Ultralytics) instance segmentation**, evaluated zero-shot-first against COCO-pretrained weights, with fine-tuning on a Roboflow-labeled dataset via Kaggle Tesla T4 GPU pursued only if zero-shot performance proves insufficient. *(Supersedes the earlier MobileNetV3 + DeepLabV3+ plan — see [[🔮 Segmentation Model]].)*
+6. **OpenCV-based homography and scaling calibration** (physical corner markers) maps segmentation-mask pixel coordinates to real-world millimeter positions on the wall.
+7. **Raster-scan (boustrophedon) toolpath planning** for reliability over optimality at prototype scale.
+8. **Performance is benchmarked against recognized external standards**, not internal thresholds: ISO 9283:1998 (positional accuracy), COCO evaluation protocol (segmentation IoU/mAP), ASTM D4147 & D3270 (spray consistency/coverage uniformity), ISO/IEC 25010:2011 (color-recommendation quality), and IEEE 1872-2015 (system integration).
+9. **Color reproduction accuracy (CIE ΔE\*) is explicitly out of scope.** AURA sprays pre-loaded paint and does not mix or synthesize color, so there is no mechanism to verify that the *applied* paint color matches the *recommended* color. Evaluation is limited to color **recommendation quality** (visual coherence/suitability, rated by human evaluators) — see [[🔍 Research Gaps & Justification]] and [[📝 Chapter 1 - Introduction]].
 
 ---
 
@@ -84,11 +90,11 @@ SORT file.name ASC
 
 ## 📝 Chapter Drafts Quick Links
 
-- [[📝 Chapter 1 - Introduction]] — draft complete
-- [[📝 Chapter 2 - Review of Related Literature]] — draft complete
-- [[📝 Chapter 3 - Methodology]] — draft complete
-- [[📝 Chapter 4 - Results]] — pending testing
+- [[📝 Chapter 1 - Introduction]] — synced with finalized thesis text (2026-07-12)
+- [[📝 Chapter 2 - Review of Related Literature]] — synced with expanded RRL (2026-07-12)
+- [[📝 Chapter 3 - Methodology]] — synced with finalized Methods + external-standards evaluation (2026-07-12)
+- [[📝 Chapter 4 - Results]] — pending testing (color-reproduction row removed)
 - [[📝 Chapter 5 - Discussion]] — pending results
 
 > [!tip]
-> This vault is the single source of truth for AURA. Log every decision, test, and advisor note here.
+> This vault is the single source of truth for AURA. Log every decision, test, and advisor note here. The full manuscript prose lives in `aura_thesis_rewrite.md` / the exported Word document — these notes track the *current decisions* that manuscript reflects.
