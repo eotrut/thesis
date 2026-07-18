@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mxfile host="app.diagrams.net" agent="AURA-thesis-diagram-generator" version="24.7.17" type="device">
+  <diagram id="aura-system-block-diagram" name="System Block Diagram">
+    <mxGraphModel dx="1400" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="900" pageHeight="1150" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- B1: Camera Input -->
+        <mxCell id="b1" value="&lt;b&gt;VISION INPUT&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:11px&quot;&gt;USB / HD Camera&lt;/font&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;Captures wall image for AI processing&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=2;fontColor=#000000;fontSize=13;fontFamily=Helvetica;align=center;verticalAlign=middle;spacing=6;" vertex="1" parent="1">
+          <mxGeometry x="95" y="40" width="300" height="100" as="geometry" />
+        </mxCell>
+
+        <!-- B2: User Input -->
+        <mxCell id="b2" value="&lt;b&gt;USER INPUT&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:11px&quot;&gt;Design Intent / Reference Image&lt;/font&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;Guides the color recommendation module&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=2;fontColor=#000000;fontSize=13;fontFamily=Helvetica;align=center;verticalAlign=middle;spacing=6;" vertex="1" parent="1">
+          <mxGeometry x="515" y="40" width="300" height="100" as="geometry" />
+        </mxCell>
+
+        <!-- B3: AI Processing Unit (condensed) -->
+        <mxCell id="b3" value="&lt;b&gt;AI PROCESSING UNIT&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:11px&quot;&gt;Laptop (RTX 3050, CUDA)&lt;/font&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;YOLOv8 Segmentation &amp;#8594; OpenCV Calibration &amp;#8594;&lt;br&gt;Raster Path Planning &amp;#8594; Color Recommendation &amp;#8594;&lt;br&gt;G-code Command Assembly&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=2;fontColor=#000000;fontSize=13;fontFamily=Helvetica;align=center;verticalAlign=middle;spacing=6;" vertex="1" parent="1">
+          <mxGeometry x="115" y="190" width="680" height="140" as="geometry" />
+        </mxCell>
+
+        <!-- B6: Limit Switches (left auxiliary) -->
+        <mxCell id="b6" value="&lt;b&gt;LIMIT SWITCHES&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;X-min, X-max, Y-min (+ spare)&lt;/font&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;Homing reference for dual-X gantry&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=2;fontColor=#000000;fontSize=12;fontFamily=Helvetica;align=center;verticalAlign=middle;spacing=6;" vertex="1" parent="1">
+          <mxGeometry x="40" y="370" width="170" height="110" as="geometry" />
+        </mxCell>
+
+        <!-- B5: Control Board -->
+        <mxCell id="b5" value="&lt;b&gt;CONTROL BOARD&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:11px&quot;&gt;Arduino Mega 2560 + RAMPS 1.4&lt;/font&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;Parses G-code &amp;middot; STEP/DIR/EN breakout &amp;middot;&lt;br&gt;relay control (M3/M5) &amp;middot; endstop homing&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=2;fontColor=#000000;fontSize=13;fontFamily=Helvetica;align=center;verticalAlign=middle;spacing=6;" vertex="1" parent="1">
+          <mxGeometry x="240" y="370" width="430" height="110" as="geometry" />
+        </mxCell>
+
+        <!-- B4: Power Supply (right auxiliary) -->
+        <mxCell id="b4" value="&lt;b&gt;POWER SUPPLY&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;24V / 30A DC PSU&lt;/font&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;Feeds TB6600 drivers directly&lt;br&gt;(bypasses RAMPS onboard headers)&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=2;fontColor=#000000;fontSize=12;fontFamily=Helvetica;align=center;verticalAlign=middle;spacing=6;" vertex="1" parent="1">
+          <mxGeometry x="690" y="370" width="170" height="110" as="geometry" />
+        </mxCell>
+
+        <!-- B7: Motion Drive -->
+        <mxCell id="b7" value="&lt;b&gt;MOTION DRIVE&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:11px&quot;&gt;3&amp;#215; TB6600 Stepper Drivers&lt;/font&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;Dual-X NEMA23 (mirrored, anti-rack) +&lt;br&gt;Single-Y NEMA23&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=2;fontColor=#000000;fontSize=13;fontFamily=Helvetica;align=center;verticalAlign=middle;spacing=6;" vertex="1" parent="1">
+          <mxGeometry x="140" y="530" width="300" height="150" as="geometry" />
+        </mxCell>
+
+        <!-- B8: Spray Assembly -->
+        <mxCell id="b8" value="&lt;b&gt;SPRAY ASSEMBLY&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:11px&quot;&gt;Relay &amp;#8594; Pump &amp;#8594; Solenoid Valve (tentative) &amp;#8594; Nozzle&lt;/font&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;Peristaltic pump (diaphragm fallback);&lt;br&gt;actuator choice pending finalization&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=2;fontColor=#000000;fontSize=13;fontFamily=Helvetica;align=center;verticalAlign=middle;spacing=6;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="470" y="530" width="300" height="150" as="geometry" />
+        </mxCell>
+
+        <!-- B9: Gantry + Spray Head -->
+        <mxCell id="b9" value="&lt;b&gt;XY GANTRY + SPRAY HEAD&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:11px&quot;&gt;Cartesian gantry, ~150mm standoff&lt;/font&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;Motion Drive positions the carriage;&lt;br&gt;Spray Assembly applies paint at position&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=2;fontColor=#000000;fontSize=13;fontFamily=Helvetica;align=center;verticalAlign=middle;spacing=6;" vertex="1" parent="1">
+          <mxGeometry x="140" y="720" width="630" height="110" as="geometry" />
+        </mxCell>
+
+        <!-- B10: Painted Wall (Output) -->
+        <mxCell id="b10" value="&lt;b&gt;OUTPUT&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:11px&quot;&gt;Painted Wall&lt;/font&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;Final applied result, captured for evaluation&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=2;fontColor=#000000;fontSize=13;fontFamily=Helvetica;align=center;verticalAlign=middle;spacing=6;" vertex="1" parent="1">
+          <mxGeometry x="305" y="870" width="300" height="90" as="geometry" />
+        </mxCell>
+
+        <!-- Edges -->
+        <mxCell id="e1" value="Wall Image" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;strokeColor=#000000;strokeWidth=1.5;fontColor=#333333;fontSize=10;fontStyle=2;fontFamily=Helvetica;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.25;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="b1" target="b3">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="e2" value="Reference / Palette Intent" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;strokeColor=#000000;strokeWidth=1.5;fontColor=#333333;fontSize=10;fontStyle=2;fontFamily=Helvetica;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.75;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="b2" target="b3">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="e3" value="Serial Commands (115200 baud)&#10;+ 5V Logic Power (via USB)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;strokeColor=#000000;strokeWidth=1.5;fontColor=#333333;fontSize=10;fontStyle=2;fontFamily=Helvetica;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="b3" target="b5">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="e4" value="Homing Feedback" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;strokeColor=#000000;strokeWidth=1.5;fontColor=#333333;fontSize=10;fontStyle=2;fontFamily=Helvetica;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="b6" target="b5">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="e5" value="24V Motor Power&#10;(direct feed, bypasses RAMPS)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;dashed=1;strokeColor=#000000;strokeWidth=1.5;fontColor=#333333;fontSize=10;fontStyle=2;fontFamily=Helvetica;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=1;entryY=0.2;entryDx=0;entryDy=0;" edge="1" parent="1" source="b4" target="b7">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="e6" value="STEP/DIR/EN Signals" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;strokeColor=#000000;strokeWidth=1.5;fontColor=#333333;fontSize=10;fontStyle=2;fontFamily=Helvetica;exitX=0.25;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="b5" target="b7">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="e7" value="Relay Control (D9 &amp;#8594; M3/M5)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;strokeColor=#000000;strokeWidth=1.5;fontColor=#333333;fontSize=10;fontStyle=2;fontFamily=Helvetica;exitX=0.75;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="b5" target="b8">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="e8" value="Motor Torque &amp;#8594; Carriage Motion" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;strokeColor=#000000;strokeWidth=1.5;fontColor=#333333;fontSize=10;fontStyle=2;fontFamily=Helvetica;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.25;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="b7" target="b9">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="e9" value="Paint Flow &amp;#8594; Nozzle" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;strokeColor=#000000;strokeWidth=1.5;fontColor=#333333;fontSize=10;fontStyle=2;fontFamily=Helvetica;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.75;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="b8" target="b9">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="e10" value="Applied Paint" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;strokeColor=#000000;strokeWidth=1.5;fontColor=#333333;fontSize=10;fontStyle=2;fontFamily=Helvetica;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="b9" target="b10">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

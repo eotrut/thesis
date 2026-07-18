@@ -1,12 +1,16 @@
 ---
 tags: [reference, mechanical, low-cost]
-authors: RSIS International
+authors: Vijaya Kumar, S., Sharath Kumar, K., Chirag, M., Chandan Gowda, V. M., & Kiran, T.
 year: 2025
 doi: n/a
 ---
 # Arduino-Based Autonomous Wall Painting Robot
+
+> [!note] Correction (2026-07-18)
+> The real authors are **Vijaya Kumar, S., Sharath Kumar, K., Chirag, M., Chandan Gowda, V. M., & Kiran, T. (2025)** — not "RSIS International" as an organizational author (RSIS is the publishing journal, not the author). Page range corrected to **1607–1619**. Corrected during the full reference audit of the concept paper; in the concept paper's reference list this entry should be alphabetized under "Vijaya Kumar," matching the fix noted in [[📝 Writing Notes & Advisor Feedback]].
+
 ## Citation
-RSIS International. (2025). *Arduino-based autonomous wall painting robot.* (As cited in AURA concept paper, 2026.)
+Vijaya Kumar, S., Sharath Kumar, K., Chirag, M., Chandan Gowda, V. M., & Kiran, T. (2025). *Arduino-based autonomous wall painting robot.* RSIS International, pp. 1607–1619. (As cited in AURA concept paper, 2026.)
 ## Core Argument
 A low-cost, Arduino-controlled robot can autonomously paint walls, showing the concept is achievable on hobby-grade hardware and budgets.
 ## Methodology

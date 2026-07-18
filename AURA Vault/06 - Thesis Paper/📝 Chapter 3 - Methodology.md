@@ -1,13 +1,13 @@
 ---
 tags: [thesis, chapter-3, methodology]
 created: 2026-03-29
-updated: 2026-07-12
+updated: 2026-07-18
 status: synced-with-manuscript
 ---
 # 📝 Chapter 3 — Methodology
 
-> [!info] Sync note
-> Updated to match the finalized manuscript: YOLOv8 (not MobileNetV3+DeepLabV3+), OpenCV homography calibration, pyserial G-code bridge, and evaluation against **external standards** rather than internal thresholds. Color reproduction (ΔE\*) removed — see [[📝 Chapter 1 - Introduction]] scope note.
+> [!info] Sync note (2026-07-18)
+> Updated to match the finalized manuscript: YOLOv8 (not MobileNetV3+DeepLabV3+), OpenCV homography calibration, pyserial G-code bridge, and evaluation against **external standards** rather than internal thresholds. Color reproduction (ΔE\*) removed — see [[📝 Chapter 1 - Introduction]] scope note. **ASTM correction:** the two previously-cited designations, ASTM D4147 and ASTM D3270, were both found during the full reference audit to be real but entirely unrelated standards (D4147 = coil-coating drawdown bars; D3270 = fluoride content of atmosphere/plant tissues). Both spray-consistency and coverage-uniformity rows below are now benchmarked against the single correct standard, **ASTM D823** ("Standard Practices for Producing Films of Uniform Thickness of Paint, Coatings and Related Products on Test Panels"). See [[🔍 Reference Audit 2026-07 - Concept Paper]] for the full audit.
 
 ## 3.1 Research Design
 **Developmental-experimental** design: developmental component covers iterative design/construction/integration of the AURA prototype; experimental component covers controlled evaluation against defined metrics.
@@ -46,13 +46,16 @@ Minimum **five (5) evaluators** rate recommended color palettes on a 1–5 scale
 |---|---|---|---|---|
 | Motion (Positional) Accuracy | Quantitative | ISO 9283:1998 | Commanded vs. measured pose (mm) | Lower error/spread = better |
 | Segmentation Accuracy | Quantitative | COCO protocol / Ultralytics YOLOv8 eval | IoU, mAP @ IoU ≥ 0.50 | Higher = better |
-| Spray Consistency | Quantitative | ASTM D4147 | Uniformity of applied coating | More uniform = better |
-| Coverage Uniformity | Quantitative | ASTM D3270 | % area evenly coated, no gaps/excess overlap | Higher = better |
+| Spray Consistency | Quantitative | ASTM D823 | Uniformity of applied coating across test panels/wall regions | More uniform = better |
+| Coverage Uniformity | Quantitative | ASTM D823 | % area evenly coated, no gaps/excess overlap | Higher = better |
 | Color Recommendation Quality | Qualitative | ISO/IEC 25010:2011 | 5-point Likert (coherence, suitability, satisfaction) | Higher mean = better |
 | Overall System Integration | Qualitative | IEEE 1872-2015 | Structured end-to-end integration assessment | Higher = better |
 
 > [!warning] Removed row
 > "Color Reproduction Accuracy (CIE ΔE\*)" has been **removed** from this table. AURA does not mix/synthesize paint color, so there is no way to instrument a comparison between recommended and applied color. Only recommendation *quality* (the palette itself) is evaluated.
+
+> [!tip] Standards references (for the Reference list)
+> ISO 9283:1998 — Manipulating industrial robots — Performance criteria and related test methods (ISO, 1998). COCO evaluation protocol (Lin et al., 2014); Ultralytics YOLOv8 eval (Jocher et al., 2023). **ASTM D823-18(2022)** — Standard Practices for Producing Films of Uniform Thickness of Paint, Coatings and Related Products on Test Panels (ASTM International, 2022). ISO/IEC 25010:2011 — Systems and software Quality Requirements and Evaluation (SQuaRE) (ISO/IEC, 2011). IEEE 1872-2015 — IEEE Standard Ontologies for Robotics and Automation (IEEE, 2015).
 
 ## 3.8 Data Analysis
 Quantitative metrics: descriptive statistics (means, SDs) and error metrics (mean positional error mm, mean IoU/mAP). Qualitative ratings: descriptive summary (mean, distribution). Results interpreted against **H₀/H₁** from [[📝 Chapter 1 - Introduction]]. Any deviations feed back into the next prototyping iteration.

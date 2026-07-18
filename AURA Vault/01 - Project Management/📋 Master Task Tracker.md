@@ -42,14 +42,23 @@ status: active
 - [ ] Tune stepper speed, acceleration, microstepping
 
 ## Phase 3 — AI Model Development
-- [ ] Collect/source wall image dataset
-- [ ] Annotate images for segmentation
-- [ ] Choose model architecture (MobileNet/DeepLab or custom CNN)
-- [ ] Train segmentation model
+- [x] Choose model architecture — **YOLOv8 segmentation** (transfer learning on COCO weights, confirmed with advisor; supersedes earlier MobileNet/DeepLab plan)
+- [ ] Roboflow: create Instance Segmentation project + lock class list (wall, door, window)
+- [x] Roboflow: bootstrap dataset forked — "wall detection" by Meguro (Universe, 480 real photos, classes: wall/door/window/sign/other). Confirmed: annotations are already polygon masks despite Universe listing it as "Object Detection" (that label described the published demo model, not the underlying label data) — usable as-is, no re-annotation needed on this set
+- [ ] Roboflow: shoot 100–200+ custom photos with actual camera/tripod rig (varied lighting/angle/distance)
+- [ ] Roboflow: upload custom photos into the (forked) Instance Segmentation project
+- [ ] Roboflow: annotate custom photos as polygons (Smart Polygon / "Find Objects with AI" tool) — only obstacle classes (door/window/sign/other) strictly need tracing; wall = complement of those
+- [ ] Roboflow: split (70/20/10) + preprocess (resize 640×640) + augment (flip, ±15° rotation, brightness/exposure, slight blur — no vertical flip)
+- [ ] Roboflow: generate dataset version
+- [ ] Roboflow: export as YOLOv8-seg format, save API snippet
+- [ ] Kaggle: create notebook, attach T4 GPU, pull dataset via Roboflow API snippet
+- [ ] Kaggle: test zero-shot YOLOv8 COCO weights on real wall photos first
+- [ ] Kaggle: fine-tune YOLOv8-seg (only if zero-shot insufficient)
 - [ ] Evaluate segmentation accuracy (IoU / pixel accuracy)
+- [ ] Download trained `.pt` weights to laptop
 - [ ] Integrate model inference into Python pipeline
 - [ ] Connect segmentation output to path planner
-- [ ] Develop color recommendation module (K-means + harmony rules)
+- [ ] Develop color recommendation module (K-means + harmony rules) — parked, not current focus
 - [ ] Test color recommendations with evaluators (qualitative, n≥5)
 
 ## Phase 4 — System Integration
