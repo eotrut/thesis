@@ -88,3 +88,30 @@ YOLOv8 masks -> morphological clean (open/close) -> contour extraction ->
 
 **Weights saved:** `best.pt` — deployed to `/website/model/best.pt` for backend integration
 **Next training run:** target ~600–1,000 images
+
+---
+
+### 2026-07-31 — Deployed behind the local API
+
+`best.pt` now runs live behind Flask and drives every page of the AURA website. Full detail in [[🔌 Backend API & Web Integration]].
+
+**Confirmed on load:** `task=segment`, `classes={0: 'non-paintable', 1: 'wall'}`, running on `cuda:0` (RTX 3050 Laptop).
+
+**Measured inference (RTX 3050, 640×640):**
+
+| Measure | Value |
+|---|---|
+| Warm-up pass (cold start) | ~1.8 s |
+| Per-image inference | **~100 ms** |
+| Wall confidence — test images | 0.88 – 0.94 |
+| Wall confidence — live webcam | 0.80 – 0.93 |
+
+> [!danger] Class-naming collision found in deployment — affects the next labelling round
+> The backend matched wall classes by substring. **`non-paintable` contains the substring `paintable`**, so every obstacle was being scored as paintable wall: `wall_coverage` inflated to 0.99, confidence reported an obstacle's score, and the during/post overlays rendered identically. Fixed by vetoing negative keywords first.
+>
+> **Lesson for the 1,000-image set:** never let one class name be a substring of another. Prefer `obstacle` over `non-paintable`, or match class **IDs** rather than names. Worth deciding before the next Roboflow export, since renaming after annotation is expensive.
+
+> [!note] Masks are extracted at full resolution
+> Inference uses `retina_masks=True`, so masks come back at input resolution instead of the default 160×160. Mask edges therefore survive into contour extraction and the coordinate mapping — relevant to [[📐 Path Planning & G-code Generation]].
+
+The segmentation mask is also **load-bearing for colour recommendation**, not just path planning: [[🎨 Color Recommendation Module]] clusters the *non-wall* regions to read the room's colour, which is only possible because the model separates wall from non-paintable.
