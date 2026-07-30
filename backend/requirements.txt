@@ -1,0 +1,73 @@
+# =============================================================================
+# AURA Backend — Python 3.11 · PyTorch + CUDA 12.1
+# =============================================================================
+#
+# INSTALL (Windows PowerShell, from the project root, with the venv active):
+#
+#   pip install -r backend/requirements.txt --extra-index-url https://download.pytorch.org/whl/cu121
+#
+# The --extra-index-url is MANDATORY. Without it pip resolves torch from PyPI,
+# which serves the CPU-only wheel on Windows — the server will still start, but
+# torch.cuda.is_available() returns False and inference drops to ~10x slower.
+# The startup banner prints "CUDA : NOT AVAILABLE" when this has happened.
+#
+# -----------------------------------------------------------------------------
+# VERSION-MISMATCH RISKS (read before upgrading anything)
+# -----------------------------------------------------------------------------
+# 1. torch / torchvision / torchaudio must be upgraded together and must all
+#    carry the same +cu121 local suffix. Mixing a +cu121 torch with a PyPI
+#    torchvision raises "operator torchvision::nms does not exist" the moment
+#    YOLOv8 runs NMS.
+#
+# 2. NVIDIA driver >= 530 is required for the cu121 wheels. The wheels bundle
+#    the CUDA 12.1 runtime, so the CUDA *toolkit* need not be installed — only
+#    the driver matters. An older driver silently reports no CUDA device.
+#
+# 3. torch >= 2.6 flipped torch.load's default to weights_only=True, which
+#    breaks loading third-party YOLO .pt checkpoints on older ultralytics
+#    releases. We pin torch 2.5.1; if you move to torch >= 2.6, move
+#    ultralytics to >= 8.3.40 in the same step.
+#
+# 4. numpy 2.x is required by opencv-python 5.x and works with torch >= 2.3.
+#    Do not downgrade numpy to 1.x — the compiled torch/opencv wheels pinned
+#    here are built against the numpy 2 ABI.
+#
+# 5. RTX 3050 laptop = 4 GB VRAM. Fine for YOLOv8n/s-seg at imgsz=640. A
+#    YOLOv8m/l/x-seg checkpoint from Kaggle can OOM here; drop AURA_IMGSZ to
+#    480 or set AURA_DEVICE=cpu if that happens.
+#
+# Versions below are the ones verified working in this project's venv
+# (2026-07-30, Python 3.11.5, RTX 3050 laptop, driver supporting CUDA 12.1).
+# =============================================================================
+
+# --- Deep learning / CUDA ---------------------------------------------------
+torch==2.5.1+cu121
+torchvision==0.20.1+cu121
+
+# --- Model ------------------------------------------------------------------
+ultralytics==8.4.90
+
+# --- Vision / numerics ------------------------------------------------------
+# opencv-python (NOT -headless): the headless build has no GUI/codec extras and
+# both being installed at once causes cv2 import ambiguity. If you hit a cv2
+# import error, `pip uninstall opencv-python-headless` and reinstall this one.
+opencv-python==5.0.0.93
+numpy==2.4.4
+pillow==12.2.0
+
+# --- Web server -------------------------------------------------------------
+# CORS is implemented by hand in app.py (an after_request hook) rather than via
+# flask-cors — one fewer dependency, and it covers the file:// "Origin: null"
+# case that the AURA pages hit when opened straight off disk.
+Flask==3.1.0
+Werkzeug==3.1.3
+
+# --- Supporting (pulled in by ultralytics; pinned for reproducibility) -------
+PyYAML==6.0.3
+requests==2.34.2
+tqdm==4.68.3
+psutil==7.2.2
+matplotlib==3.11.0
+
+# --- Robot serial link (used by the path-planning stage, not the API) -------
+pyserial==3.5

@@ -1,0 +1,388 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Camera View — AURA</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body data-page="camera-view">
+
+  <div id="navbar"></div>
+
+  <main>
+    <div class="container">
+      <div class="page-header">
+        <p class="eyebrow">Camera &amp; Masking View</p>
+        <h1>Camera / Masking View</h1>
+        <p>Monitor the live camera feed or review a captured recording, with segmentation overlays for each painting stage.</p>
+      </div>
+
+      <div class="mode-tabs">
+        <button class="btn btn-secondary is-active" id="mode-live">Live Feed</button>
+        <button class="btn btn-secondary" id="mode-upload">Upload / Playback</button>
+      </div>
+
+      <!-- Live Feed Mode -->
+      <section id="live-mode" class="section" style="padding-top: 0;">
+        <div class="card">
+          <div class="video-panel" data-group="live" id="live-panel">
+            <div class="video-placeholder" id="live-placeholder">
+              <span class="pulse-dot"></span>
+              <p id="live-placeholder-text">Connecting to camera…</p>
+            </div>
+            <!-- MJPEG stream from the Python backend. The segmentation mask is
+                 rendered server-side and burned into each frame, so no SVG
+                 overlay is needed here. -->
+            <img id="live-stream" alt="Live segmented camera feed" style="display: none;" />
+          </div>
+
+          <div class="overlay-toggles" data-toggle-group="live">
+            <button class="btn btn-toggle btn-secondary is-active" data-overlay="pre">Pre-Painting</button>
+            <button class="btn btn-toggle btn-secondary" data-overlay="during">During Painting</button>
+            <button class="btn btn-toggle btn-secondary" data-overlay="post">Post-Painting</button>
+          </div>
+
+          <div class="overlay-legend">
+            <span><span class="swatch-dot" style="background:#94A3B8;"></span>Pre-Painting — raw feed, no mask applied</span>
+            <span><span class="swatch-dot" style="background:#22C55E;"></span>During Painting — paintable wall region only</span>
+            <span><span class="swatch-dot" style="background:#EAB308;"></span>Post-Painting — adds non-paintable regions in amber</span>
+          </div>
+
+          <p class="demo-note" id="live-meta">Stream served by the AURA backend at /api/stream</p>
+        </div>
+      </section>
+
+      <!-- Upload / Playback Mode -->
+      <section id="upload-mode" class="section" style="padding-top: 0; display: none;">
+        <div class="card">
+          <div id="upload-prompt">
+            <p class="status-label" style="margin-bottom: 14px;">Upload a recorded clip or still frame to review with overlays</p>
+            <input type="file" id="playback-input" accept="image/*,video/*" />
+          </div>
+
+          <div class="inference-status" id="upload-status" style="display: none;">
+            <span class="pulse-dot" id="upload-status-dot"></span>
+            <span id="upload-status-text"></span>
+          </div>
+
+          <div class="video-panel" data-group="upload" id="upload-panel" style="display: none; margin-top: 18px;">
+            <!-- Still images: the backend returns the mask burned into the frame.
+                 Videos: no server-side video pipeline exists yet, so the SVG
+                 placeholder overlays below are kept for clips only. -->
+            <div class="overlay-mask" data-overlay="pre" data-video-only="true">
+              <svg viewBox="0 0 100 100" preserveAspectRatio="none">
+                <polygon points="12,16 74,11 80,90 8,86" fill="#2563EB" fill-opacity="0.5" stroke="#2563EB" stroke-width="1" />
+              </svg>
+            </div>
+            <div class="overlay-mask" data-overlay="during" data-video-only="true">
+              <svg viewBox="0 0 100 100" preserveAspectRatio="none">
+                <polygon points="12,16 74,11 80,90 8,86" fill="#EAB308" fill-opacity="0.5" stroke="#EAB308" stroke-width="1" />
+              </svg>
+            </div>
+            <div class="overlay-mask" data-overlay="post" data-video-only="true">
+              <svg viewBox="0 0 100 100" preserveAspectRatio="none">
+                <polygon points="12,16 74,11 80,90 8,86" fill="#22C55E" fill-opacity="0.5" stroke="#22C55E" stroke-width="1" />
+              </svg>
+            </div>
+          </div>
+
+          <div class="overlay-toggles" data-toggle-group="upload" id="upload-toggles" style="display: none;">
+            <button class="btn btn-toggle btn-secondary is-active" data-overlay="pre">Pre-Painting</button>
+            <button class="btn btn-toggle btn-secondary" data-overlay="during">During Painting</button>
+            <button class="btn btn-toggle btn-secondary" data-overlay="post">Post-Painting</button>
+          </div>
+
+          <div class="overlay-legend" id="upload-legend" style="display: none;">
+            <span><span class="swatch-dot" style="background:#94A3B8;"></span>Pre-Painting — original frame</span>
+            <span><span class="swatch-dot" style="background:#22C55E;"></span>During Painting — paintable wall region only</span>
+            <span><span class="swatch-dot" style="background:#EAB308;"></span>Post-Painting — adds non-paintable regions in amber</span>
+          </div>
+
+          <p class="demo-note" id="upload-meta"></p>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <div id="footer"></div>
+
+  <script src="nav.js"></script>
+  <script>
+    (function () {
+      var modeLiveBtn = document.getElementById("mode-live");
+      var modeUploadBtn = document.getElementById("mode-upload");
+      var liveMode = document.getElementById("live-mode");
+      var uploadMode = document.getElementById("upload-mode");
+
+      /* ================================================================== */
+      /* Live feed — MJPEG stream from GET /api/stream?overlay=...          */
+      /* ================================================================== */
+
+      var liveStream = document.getElementById("live-stream");
+      var livePlaceholder = document.getElementById("live-placeholder");
+      var livePlaceholderText = document.getElementById("live-placeholder-text");
+      var liveMeta = document.getElementById("live-meta");
+      var liveOverlay = "pre";
+      var liveActive = false;
+
+      function startStream(overlay) {
+        liveOverlay = overlay || liveOverlay;
+        liveActive = true;
+
+        livePlaceholder.style.display = "flex";
+        livePlaceholderText.textContent = "Connecting to camera…";
+        liveStream.style.display = "none";
+
+        // The <img> src is built by hand, so it has to wait for the API base to
+        // be verified — otherwise a page served by a separate static server
+        // points the stream at that server, which has no /api routes.
+        var requested = liveOverlay;
+        window.AURA.ready().then(function () {
+          if (!liveActive || requested !== liveOverlay) return;
+          // Cache-buster: without it the browser reuses the previous stream
+          // connection when only the overlay query param changes.
+          liveStream.src = window.AURA.apiUrl(
+            "/api/stream?overlay=" + encodeURIComponent(liveOverlay) + "&t=" + Date.now()
+          );
+        });
+      }
+
+      /* Releasing the camera matters: the backend holds the webcam open for as
+         long as any stream connection is alive, so the <img> must be torn down
+         when this view is hidden. */
+      function stopStream() {
+        liveActive = false;
+        liveStream.removeAttribute("src");
+        liveStream.style.display = "none";
+        livePlaceholder.style.display = "flex";
+        livePlaceholderText.textContent = "Stream stopped.";
+      }
+
+      liveStream.addEventListener("load", function () {
+        if (!liveActive) return;
+        livePlaceholder.style.display = "none";
+        liveStream.style.display = "block";
+      });
+
+      liveStream.addEventListener("error", function () {
+        if (!liveActive) return;
+        liveStream.style.display = "none";
+        livePlaceholder.style.display = "flex";
+        livePlaceholderText.textContent =
+          "Cannot reach the camera stream. Is the backend running (python backend/app.py)?";
+      });
+
+      modeLiveBtn.addEventListener("click", function () {
+        modeLiveBtn.classList.add("is-active");
+        modeUploadBtn.classList.remove("is-active");
+        liveMode.style.display = "block";
+        uploadMode.style.display = "none";
+        startStream(liveOverlay);
+      });
+
+      modeUploadBtn.addEventListener("click", function () {
+        modeUploadBtn.classList.add("is-active");
+        modeLiveBtn.classList.remove("is-active");
+        uploadMode.style.display = "block";
+        liveMode.style.display = "none";
+        stopStream();
+      });
+
+      document
+        .querySelector('[data-toggle-group="live"]')
+        .addEventListener("click", function (e) {
+          var btn = e.target.closest("button[data-overlay]");
+          if (!btn) return;
+
+          Array.prototype.forEach.call(this.querySelectorAll("button"), function (b) {
+            b.classList.remove("is-active");
+          });
+          btn.classList.add("is-active");
+
+          startStream(btn.getAttribute("data-overlay"));
+        });
+
+      // Free the camera when the tab is closed or navigated away from.
+      window.addEventListener("pagehide", stopStream);
+
+      // Show which device the inference is running on, once.
+      window.AURA.apiFetch("/api/status", { timeoutMs: 8000 })
+        .then(function (status) {
+          var bits = ["Stream served by the AURA backend at /api/stream"];
+          if (status.model_loaded) {
+            bits.push(status.model + " on " + status.device_name);
+          } else {
+            bits.push("model not loaded — stream shows the raw feed");
+          }
+          if (status.using_fallback_model) {
+            bits.push("FALLBACK model, not the fine-tuned AURA weights");
+          }
+          liveMeta.textContent = bits.join(" · ");
+        })
+        .catch(function () {
+          liveMeta.textContent = "Backend offline — start it with `python backend/app.py`";
+        });
+
+      startStream("pre");
+
+      /* ================================================================== */
+      /* Upload / playback — stills go through POST /api/segment            */
+      /* ================================================================== */
+
+      var playbackInput = document.getElementById("playback-input");
+      var uploadPanel = document.getElementById("upload-panel");
+      var uploadToggles = document.getElementById("upload-toggles");
+      var uploadLegend = document.getElementById("upload-legend");
+      var uploadStatus = document.getElementById("upload-status");
+      var uploadStatusText = document.getElementById("upload-status-text");
+      var uploadStatusDot = document.getElementById("upload-status-dot");
+      var uploadMeta = document.getElementById("upload-meta");
+
+      var currentFile = null;
+      var isVideo = false;
+      var overlayCache = {}; // overlay mode -> data URI, so toggling is instant
+      var uploadOverlay = "pre";
+
+      function setUploadStatus(message, state) {
+        if (!message) {
+          uploadStatus.style.display = "none";
+          return;
+        }
+        uploadStatus.style.display = "flex";
+        uploadStatusText.textContent = message;
+        uploadStatusDot.style.display = state === "busy" ? "inline-block" : "none";
+        uploadStatus.className = "inference-status" + (state === "error" ? " is-error" : "");
+      }
+
+      function setVideoOverlays(overlay) {
+        Array.prototype.forEach.call(
+          uploadPanel.querySelectorAll(".overlay-mask"),
+          function (mask) {
+            mask.classList.toggle(
+              "is-active",
+              isVideo && mask.getAttribute("data-overlay") === overlay
+            );
+          }
+        );
+      }
+
+      playbackInput.addEventListener("change", function () {
+        var file = playbackInput.files && playbackInput.files[0];
+        if (!file) return;
+
+        currentFile = file;
+        overlayCache = {};
+        uploadOverlay = "pre";
+        isVideo = file.type.indexOf("video/") === 0;
+
+        var url = URL.createObjectURL(file);
+        var existingMedia = uploadPanel.querySelector("img, video");
+        if (existingMedia) existingMedia.remove();
+
+        var mediaEl;
+        if (isVideo) {
+          mediaEl = document.createElement("video");
+          mediaEl.src = url;
+          mediaEl.controls = true;
+          mediaEl.muted = true;
+          mediaEl.autoplay = true;
+          mediaEl.loop = true;
+          uploadMeta.textContent =
+            "Video playback uses placeholder overlays — per-frame segmentation of " +
+            "recorded clips is not implemented in the backend yet.";
+        } else {
+          mediaEl = document.createElement("img");
+          mediaEl.id = "upload-frame";
+          mediaEl.src = url;
+          mediaEl.alt = "Uploaded frame";
+          overlayCache.pre = url;
+          uploadMeta.textContent = "";
+        }
+
+        uploadPanel.insertBefore(mediaEl, uploadPanel.firstChild);
+        uploadPanel.style.display = "flex";
+        uploadToggles.style.display = "flex";
+        uploadLegend.style.display = "flex";
+
+        Array.prototype.forEach.call(uploadToggles.querySelectorAll("button"), function (b) {
+          b.classList.toggle("is-active", b.getAttribute("data-overlay") === "pre");
+        });
+        setVideoOverlays("pre");
+
+        if (!isVideo) {
+          // Warm the cache for the mask views so the first toggle is instant.
+          requestOverlay("during", true);
+        }
+      });
+
+      /** Ask the backend to segment the current still at the given overlay mode. */
+      function requestOverlay(overlay, silent) {
+        if (isVideo || !currentFile) return Promise.resolve(null);
+        if (overlayCache[overlay]) return Promise.resolve(overlayCache[overlay]);
+
+        if (!silent) setUploadStatus("Running YOLOv8 segmentation…", "busy");
+
+        var formData = new FormData();
+        formData.append("image", currentFile);
+        formData.append("overlay", overlay);
+
+        return window.AURA.apiFetch("/api/segment", {
+          method: "POST",
+          body: formData,
+          timeoutMs: 60000
+        })
+          .then(function (data) {
+            if (!data.success) throw new Error(data.error || "Segmentation failed.");
+            overlayCache[overlay] = window.AURA.toDataUri(data.masked_image, data.image_format);
+            overlayCache.pre = window.AURA.toDataUri(data.original_image, data.image_format);
+
+            if (!silent) {
+              var pct = data.wall_detected
+                ? (data.wall_confidence * 100).toFixed(1) + "% confidence"
+                : "no wall region found";
+              setUploadStatus("Wall detection: " + pct, "ok");
+              setTimeout(function () { setUploadStatus(null); }, 3500);
+            }
+            uploadMeta.textContent =
+              data.detection_count + " object(s) detected · inference " +
+              data.inference_ms + " ms on " + data.device + " · " + data.model;
+            return overlayCache[overlay];
+          })
+          .catch(function (err) {
+            if (!silent) {
+              setUploadStatus(err.message, "error");
+              window.AURA.showToast(err.message);
+            }
+            return null;
+          });
+      }
+
+      uploadToggles.addEventListener("click", function (e) {
+        var btn = e.target.closest("button[data-overlay]");
+        if (!btn) return;
+
+        var overlay = btn.getAttribute("data-overlay");
+        uploadOverlay = overlay;
+
+        Array.prototype.forEach.call(uploadToggles.querySelectorAll("button"), function (b) {
+          b.classList.remove("is-active");
+        });
+        btn.classList.add("is-active");
+
+        if (isVideo) {
+          setVideoOverlays(overlay);
+          return;
+        }
+
+        var frame = uploadPanel.querySelector("#upload-frame");
+        if (!frame) return;
+
+        requestOverlay(overlay).then(function (src) {
+          if (src) frame.src = src;
+        });
+      });
+    })();
+  </script>
+</body>
+</html>

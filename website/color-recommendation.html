@@ -1,0 +1,970 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Color Recommendation — AURA</title>
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    /* Manual neutral fallbacks, held visually apart from the generated palette
+       so it stays obvious which suggestions came from the model. */
+    .neutral-section {
+      margin-top: 24px;
+      padding-top: 20px;
+      border-top: 1px solid rgba(148, 163, 184, 0.22);
+    }
+
+    .neutral-prompt {
+      font-size: 0.86rem;
+      color: var(--text-secondary);
+      margin-bottom: 12px;
+      font-style: italic;
+    }
+
+    /* The stock swatch has no border, so #FFFFFF vanishes against a light card
+       and #1C1C1C against a dark one. Ring every neutral swatch instead. */
+    #neutral-row .swatch {
+      border: 1px solid rgba(148, 163, 184, 0.45);
+    }
+
+    /* ---------------- Custom colour picker ---------------- */
+
+    .custom-section {
+      margin-top: 26px;
+      padding-top: 20px;
+      border-top: 1px solid rgba(148, 163, 184, 0.22);
+    }
+
+    .custom-prompt {
+      font-size: 0.86rem;
+      color: var(--text-secondary);
+      margin-bottom: 16px;
+      font-style: italic;
+    }
+
+    /* Now living in the half-width preview column, so it has to stay narrow —
+       the wheel and controls still sit side by side above ~420px. */
+    .custom-picker {
+      display: flex;
+      gap: 20px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .custom-wheel-wrap {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      align-items: center;
+    }
+
+    #color-wheel {
+      width: 150px;
+      height: 150px;
+      border-radius: 50%;
+      cursor: crosshair;
+      background: var(--panel);
+      box-shadow: 0 0 0 1px var(--panel-border), 0 6px 18px rgba(0, 0, 0, 0.35);
+      touch-action: none; /* let us handle drags without the page scrolling */
+    }
+
+    #wheel-lightness {
+      width: 150px;
+      accent-color: var(--accent);
+      cursor: pointer;
+    }
+
+    .custom-controls {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      min-width: 168px;
+    }
+
+    .custom-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    /* Strip the native chrome so the input reads as a circular swatch rather
+       than the default grey browser button. */
+    #custom-color-input {
+      width: 52px;
+      height: 52px;
+      padding: 0;
+      border: none;
+      border-radius: 50%;
+      background: none;
+      cursor: pointer;
+      box-shadow: 0 0 0 2px var(--panel-border), 0 4px 12px rgba(0, 0, 0, 0.35);
+      transition: box-shadow 0.15s ease;
+    }
+
+    #custom-color-input:hover {
+      box-shadow: 0 0 0 2px var(--accent), 0 4px 14px rgba(37, 99, 235, 0.45);
+    }
+
+    #custom-color-input::-webkit-color-swatch-wrapper { padding: 0; }
+    #custom-color-input::-webkit-color-swatch { border: none; border-radius: 50%; }
+    #custom-color-input::-moz-color-swatch { border: none; border-radius: 50%; }
+
+    .custom-hex {
+      width: 108px;
+      padding: 9px 10px;
+      border-radius: 8px;
+      border: 1px solid var(--panel-border);
+      background: var(--bg);
+      color: var(--text);
+      font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
+      font-size: 0.92rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .custom-hex:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.25);
+    }
+
+    .custom-hex.is-invalid {
+      border-color: #EF4444;
+      box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.22);
+    }
+
+    #custom-apply { align-self: flex-start; }
+
+    .custom-hint {
+      font-size: 0.78rem;
+      color: var(--text-secondary);
+      margin: 0;
+    }
+  </style>
+</head>
+<body data-page="color-recommendation">
+
+  <div id="navbar"></div>
+
+  <main>
+    <div class="container">
+      <div class="page-header">
+        <p class="eyebrow">Color Recommendation Module</p>
+        <h1>Color Recommendation</h1>
+        <p>Upload a reference photo of the wall. AURA detects the paintable region and proposes a coherent color palette.</p>
+      </div>
+
+      <section class="section" style="padding-top: 0;" id="upload-section">
+        <div class="card">
+          <div class="drop-zone" id="drop-zone">
+            <div class="drop-icon">📷</div>
+            <p><strong>Drag &amp; drop a wall photo here</strong></p>
+            <p class="drop-hint">or use one of the options below &middot; JPG/PNG, up to ~10MB</p>
+          </div>
+          <div class="btn-row" style="margin-top: 20px; justify-content: center;">
+            <button class="btn btn-primary" id="upload-btn">Upload Image</button>
+            <button class="btn btn-secondary" id="camera-btn">Capture from Camera</button>
+          </div>
+          <input type="file" id="file-input" accept="image/*" style="display: none;" />
+
+          <div class="inference-status" id="inference-status" style="display: none;">
+            <span class="pulse-dot" id="status-dot"></span>
+            <span id="status-text">Running YOLOv8 segmentation…</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" style="padding-top: 0; display: none;" id="compare-section">
+        <h2 class="section-title">Detected Wall Region</h2>
+        <div class="grid grid-2">
+          <div>
+            <div class="compare-panel">
+              <img id="original-img" alt="Uploaded wall photo" />
+            </div>
+            <p class="compare-caption">Original — uploaded reference photo</p>
+          </div>
+          <div>
+            <div class="compare-panel">
+              <img id="masked-img" alt="Segmentation mask overlay" />
+            </div>
+            <p class="compare-caption" id="masked-caption">Segmentation mask — YOLOv8 instance segmentation</p>
+          </div>
+        </div>
+
+        <div class="card" style="margin-top: 22px;">
+          <p class="status-label">Detection Results</p>
+          <div class="detection-summary" id="detection-summary"></div>
+          <div class="detection-list" id="detection-list"></div>
+          <p class="demo-note" id="inference-meta"></p>
+        </div>
+      </section>
+
+      <section class="section" style="padding-top: 0; display: none;" id="recommendation-section">
+        <h2 class="section-title">Recommended Palette</h2>
+        <div class="card">
+          <div class="grid grid-2" style="align-items: start;">
+            <div>
+              <div class="compare-panel">
+                <canvas id="tint-canvas"></canvas>
+              </div>
+              <p class="compare-caption" id="tint-caption">Preview — recommended color applied to the detected wall region</p>
+
+              <!-- Sits directly under the preview so picking a colour and seeing
+                   it on the wall stay in one glance, no scrolling. Also fills the
+                   dead space this column had — the grid row is sized by the
+                   taller palette column on the right.
+                   The wheel is drawn on a canvas rather than pulled from a CDN so
+                   the page keeps working with no internet. -->
+              <div class="custom-section">
+                <p class="status-label">Custom Color</p>
+                <p class="custom-prompt">Choose any color manually</p>
+
+                <div class="custom-picker">
+                  <div class="custom-wheel-wrap">
+                    <canvas id="color-wheel" width="150" height="150"
+                            aria-label="Color wheel — click or drag to choose a hue and saturation"></canvas>
+                    <input type="range" id="wheel-lightness" min="0" max="100" value="80"
+                           aria-label="Lightness" />
+                  </div>
+
+                  <div class="custom-controls">
+                    <div class="custom-row">
+                      <!-- This input IS the current-colour swatch: its fill shows
+                           the live value, and clicking it opens the system picker. -->
+                      <input type="color" id="custom-color-input" value="#6B7FD4"
+                             title="Current color — click to open the system picker" />
+                      <input type="text" id="custom-hex" class="custom-hex"
+                             value="#6B7FD4" maxlength="7" spellcheck="false"
+                             aria-label="Hex colour value" />
+                    </div>
+                    <button class="btn btn-primary" id="custom-apply">Apply to Wall</button>
+                    <p class="custom-hint" id="custom-hint">Pick from the wheel, the swatch, or type a hex code.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <div class="color-primary">
+                <div class="color-chip-large" id="primary-chip" style="background: #D8D0C4;"></div>
+                <div>
+                  <p class="color-primary-label" id="primary-label">Awaiting analysis…</p>
+                  <p class="color-primary-desc" id="primary-desc">Upload a photo to generate a palette from the room's own colours.</p>
+                </div>
+              </div>
+
+              <p class="status-label" style="margin-top: 26px;">Alternative Palette</p>
+              <div class="palette-row" id="palette-row"></div>
+
+              <p class="status-sub" id="context-note" style="margin-top: 16px;"></p>
+
+              <!-- Manual fallbacks. Hardcoded in the markup rather than rendered
+                   from the API response on purpose: these must stay available
+                   even when the recommendation request fails, which is exactly
+                   when a user most needs a fallback. -->
+              <div class="neutral-section">
+                <p class="neutral-prompt">Not feeling the recommendations? Choose a neutral instead.</p>
+                <p class="status-label">Neutral Options</p>
+                <div class="palette-row" id="neutral-row">
+                  <button class="palette-chip" data-color="#FFFFFF" data-name="Pure White" data-note="Fixed neutral — not an AI suggestion." data-recommended="0" title="#FFFFFF">
+                    <span class="swatch" style="background: #FFFFFF;"></span>
+                    <span class="name">Pure White</span>
+                  </button>
+                  <button class="palette-chip" data-color="#F5F5F0" data-name="Off White" data-note="Fixed neutral — not an AI suggestion." data-recommended="0" title="#F5F5F0">
+                    <span class="swatch" style="background: #F5F5F0;"></span>
+                    <span class="name">Off White</span>
+                  </button>
+                  <button class="palette-chip" data-color="#D3D3D3" data-name="Light Gray" data-note="Fixed neutral — not an AI suggestion." data-recommended="0" title="#D3D3D3">
+                    <span class="swatch" style="background: #D3D3D3;"></span>
+                    <span class="name">Light Gray</span>
+                  </button>
+                  <button class="palette-chip" data-color="#9E9E9E" data-name="Medium Gray" data-note="Fixed neutral — not an AI suggestion." data-recommended="0" title="#9E9E9E">
+                    <span class="swatch" style="background: #9E9E9E;"></span>
+                    <span class="name">Medium Gray</span>
+                  </button>
+                  <button class="palette-chip" data-color="#4A4A4A" data-name="Charcoal" data-note="Fixed neutral — not an AI suggestion." data-recommended="0" title="#4A4A4A">
+                    <span class="swatch" style="background: #4A4A4A;"></span>
+                    <span class="name">Charcoal</span>
+                  </button>
+                  <button class="palette-chip" data-color="#1C1C1C" data-name="Matte Black" data-note="Fixed neutral — not an AI suggestion." data-recommended="0" title="#1C1C1C">
+                    <span class="swatch" style="background: #1C1C1C;"></span>
+                    <span class="name">Matte Black</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+
+          <p class="demo-note">Wall region from YOLOv8 instance segmentation &middot; palette derived from the room's dominant colours by k-means clustering + colour-wheel relationships</p>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <div id="footer"></div>
+
+  <script src="nav.js"></script>
+  <script>
+    (function () {
+      var dropZone = document.getElementById("drop-zone");
+      var uploadBtn = document.getElementById("upload-btn");
+      var cameraBtn = document.getElementById("camera-btn");
+      var fileInput = document.getElementById("file-input");
+      var compareSection = document.getElementById("compare-section");
+      var recommendationSection = document.getElementById("recommendation-section");
+      var originalImg = document.getElementById("original-img");
+      var maskedImg = document.getElementById("masked-img");
+      var maskedCaption = document.getElementById("masked-caption");
+      var canvas = document.getElementById("tint-canvas");
+      var ctx = canvas.getContext("2d");
+      var paletteRow = document.getElementById("palette-row");
+      var statusBox = document.getElementById("inference-status");
+      var statusText = document.getElementById("status-text");
+      var statusDot = document.getElementById("status-dot");
+      var detectionSummary = document.getElementById("detection-summary");
+      var detectionList = document.getElementById("detection-list");
+      var inferenceMeta = document.getElementById("inference-meta");
+      var tintCaption = document.getElementById("tint-caption");
+      var primaryChip = document.getElementById("primary-chip");
+      var primaryLabel = document.getElementById("primary-label");
+      var primaryDesc = document.getElementById("primary-desc");
+      var contextNote = document.getElementById("context-note");
+
+      var loadedImage = null;
+      /* Neutral placeholder until the backend returns a real palette — the page
+         must never imply a recommendation it has not actually computed. */
+      var currentColor = "#D8D0C4";
+      var currentColorName = "—";
+      var recommendation = null;
+
+      /* Normalized (0-1) wall polygons returned by the backend. Empty means we
+         have no mask, in which case the preview tints the whole frame and the
+         caption says so rather than implying a detection happened. */
+      var wallPolygons = [];
+
+      /* ------------------------------------------------------------------ */
+      /* Status line                                                         */
+      /* ------------------------------------------------------------------ */
+
+      function setStatus(message, state) {
+        statusBox.style.display = "flex";
+        statusText.textContent = message;
+        statusDot.style.display = state === "busy" ? "inline-block" : "none";
+        statusBox.className = "inference-status" + (state === "error" ? " is-error" : "");
+      }
+
+      function clearStatus() {
+        statusBox.style.display = "none";
+      }
+
+      /* ------------------------------------------------------------------ */
+      /* Input handling                                                      */
+      /* ------------------------------------------------------------------ */
+
+      uploadBtn.addEventListener("click", function () {
+        fileInput.click();
+      });
+
+      dropZone.addEventListener("click", function () {
+        fileInput.click();
+      });
+
+      dropZone.addEventListener("dragover", function (e) {
+        e.preventDefault();
+        dropZone.classList.add("is-dragover");
+      });
+
+      dropZone.addEventListener("dragleave", function () {
+        dropZone.classList.remove("is-dragover");
+      });
+
+      dropZone.addEventListener("drop", function (e) {
+        e.preventDefault();
+        dropZone.classList.remove("is-dragover");
+        if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+          handleFile(e.dataTransfer.files[0]);
+        }
+      });
+
+      fileInput.addEventListener("change", function () {
+        if (fileInput.files && fileInput.files[0]) {
+          handleFile(fileInput.files[0]);
+        }
+        fileInput.value = ""; // allow re-selecting the same file
+      });
+
+      /* Grab a single still off the robot's webcam and segment it server-side. */
+      cameraBtn.addEventListener("click", function () {
+        setStatus("Capturing a frame from the camera…", "busy");
+        window.AURA.apiFetch("/api/capture", { timeoutMs: 30000 })
+          .then(function (data) {
+            if (!data.success) throw new Error(data.error || "Capture failed.");
+            applySegmentation(data);
+            // No File here — rebuild one from the frame the backend returned.
+            requestRecommendations(
+              base64ToBlob(data.original || data.original_image),
+              "camera.jpg"
+            );
+          })
+          .catch(function (err) {
+            setStatus(err.message, "error");
+            window.AURA.showToast(err.message);
+          });
+      });
+
+      function handleFile(file) {
+        if (!file.type || file.type.indexOf("image/") !== 0) {
+          window.AURA.showToast("Please choose an image file (JPG or PNG).");
+          return;
+        }
+
+        // Show the local preview straight away so the UI responds instantly,
+        // then replace it with the backend's copy once inference returns.
+        var objectUrl = URL.createObjectURL(file);
+        originalImg.src = objectUrl;
+        compareSection.style.display = "block";
+        setStatus("Running YOLOv8 segmentation on " + file.name + "…", "busy");
+
+        var formData = new FormData();
+        formData.append("image", file);
+        formData.append("overlay", "post");
+
+        window.AURA.apiFetch("/api/segment", {
+          method: "POST",
+          body: formData,
+          timeoutMs: 60000
+        })
+          .then(function (data) {
+            if (!data.success) throw new Error(data.error || "Segmentation failed.");
+            applySegmentation(data);
+            // Second pass: the palette is derived from the non-wall regions, so
+            // it needs its own inference run on the same image.
+            requestRecommendations(file, file.name);
+          })
+          .catch(function (err) {
+            handleFailure(err, objectUrl);
+          });
+      }
+
+      /* ------------------------------------------------------------------ */
+      /* Applying the backend response                                       */
+      /* ------------------------------------------------------------------ */
+
+      function applySegmentation(data) {
+        originalImg.src = window.AURA.toDataUri(data.original_image, data.image_format);
+        maskedImg.src = window.AURA.toDataUri(data.masked_image, data.image_format);
+
+        wallPolygons = (data.detections || [])
+          .filter(function (det) {
+            return det.is_wall && det.polygon && det.polygon.length >= 3;
+          })
+          .map(function (det) { return det.polygon; });
+
+        renderDetections(data);
+
+        maskedCaption.textContent = data.wall_detected
+          ? "YOLOv8 segmentation mask — paintable wall in green, non-paintable regions in amber"
+          : "YOLOv8 segmentation — no wall region detected in this image";
+
+        // Reload the source image from the returned base64 so the tint preview
+        // is pixel-aligned with the coordinates the mask polygons refer to.
+        var img = new Image();
+        img.onload = function () {
+          loadedImage = img;
+          canvas.width = img.naturalWidth;
+          canvas.height = img.naturalHeight;
+          drawTint(currentColor);
+          compareSection.style.display = "block";
+          recommendationSection.style.display = "block";
+        };
+        img.src = originalImg.src;
+
+        if (data.wall_detected) {
+          var pct = Math.round((data.wall_confidence || 0) * 100);
+          setStatus("Wall detected — " + pct + "% confidence", "ok");
+          setTimeout(clearStatus, 3500);
+        } else {
+          setStatus("No wall region detected. Try a photo with more of the wall in frame.", "error");
+        }
+      }
+
+      function handleFailure(err, objectUrl) {
+        setStatus(err.message, "error");
+        window.AURA.showToast(err.message);
+
+        // Degrade honestly: still show the photo and let the user try colors,
+        // but tint the whole frame and say the mask is missing.
+        wallPolygons = [];
+        detectionSummary.innerHTML = '<span class="badge badge-error">Backend unavailable</span>';
+        detectionList.innerHTML = "";
+        inferenceMeta.textContent = "";
+        paletteRow.innerHTML = "";
+        primaryLabel.textContent = "Palette unavailable";
+        primaryDesc.textContent = "Colour recommendations need the backend.";
+        contextNote.textContent = "";
+        maskedImg.removeAttribute("src");
+        maskedCaption.textContent = "Segmentation unavailable — backend not reachable";
+
+        var img = new Image();
+        img.onload = function () {
+          loadedImage = img;
+          canvas.width = img.naturalWidth;
+          canvas.height = img.naturalHeight;
+          drawTint(currentColor);
+          recommendationSection.style.display = "block";
+        };
+        img.src = objectUrl;
+      }
+
+      function renderDetections(data) {
+        var dets = data.detections || [];
+
+        var summary = "";
+        if (data.wall_detected) {
+          summary +=
+            '<span class="badge badge-connected">Wall detected</span>' +
+            '<span class="detection-metric">Confidence <strong>' +
+            (data.wall_confidence * 100).toFixed(1) + "%</strong></span>" +
+            '<span class="detection-metric">Coverage <strong>' +
+            (data.wall_coverage * 100).toFixed(1) + "%</strong> of frame</span>";
+        } else {
+          summary += '<span class="badge badge-idle">No wall detected</span>';
+        }
+        summary +=
+          '<span class="detection-metric">Objects <strong>' + dets.length + "</strong></span>";
+
+        if (data.wall_class_inferred) {
+          summary +=
+            '<span class="badge badge-info" title="The model has no explicit wall class, so ' +
+            'the largest segmented region is treated as the wall.">Wall inferred by area</span>';
+        }
+        if (data.using_fallback_model) {
+          summary +=
+            '<span class="badge badge-error" title="Running the COCO-pretrained baseline, not ' +
+            'the fine-tuned AURA model.">Fallback model</span>';
+        }
+        detectionSummary.innerHTML = summary;
+
+        if (!dets.length) {
+          detectionList.innerHTML =
+            '<p class="status-sub">No objects returned above the confidence threshold.</p>';
+        } else {
+          detectionList.innerHTML = dets
+            .map(function (det) {
+              var pct = (det.confidence * 100).toFixed(1);
+              return (
+                '<div class="detection-row' + (det.is_wall ? " is-wall" : "") + '">' +
+                '<span class="detection-name">' + det.class_name + "</span>" +
+                '<span class="detection-bar"><span class="detection-bar-fill" style="width:' +
+                pct + '%;"></span></span>' +
+                '<span class="detection-conf">' + pct + "%</span>" +
+                "</div>"
+              );
+            })
+            .join("");
+        }
+
+        inferenceMeta.textContent =
+          "Inference " + data.inference_ms + " ms on " + data.device +
+          " · " + data.model +
+          " · " + data.image_width + "×" + data.image_height + " px";
+      }
+
+      /* ------------------------------------------------------------------ */
+      /* Color preview                                                       */
+      /* ------------------------------------------------------------------ */
+
+      /** Perceived lightness (0-1) of a #RRGGBB colour, Rec.601 weighting. */
+      function perceivedLightness(hexColor) {
+        var h = String(hexColor).replace("#", "");
+        if (h.length !== 6) return 0.5;
+        var r = parseInt(h.substr(0, 2), 16);
+        var g = parseInt(h.substr(2, 2), 16);
+        var b = parseInt(h.substr(4, 2), 16);
+        return (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+      }
+
+      function drawTint(hexColor) {
+        if (!loadedImage) return;
+        var w = canvas.width;
+        var h = canvas.height;
+
+        ctx.clearRect(0, 0, w, h);
+        ctx.drawImage(loadedImage, 0, 0, w, h);
+
+        ctx.save();
+
+        if (wallPolygons.length) {
+          // Clip to the real segmentation mask — every wall polygon becomes a
+          // subpath so multi-region walls all get tinted.
+          ctx.beginPath();
+          wallPolygons.forEach(function (polygon) {
+            polygon.forEach(function (point, i) {
+              var x = point[0] * w;
+              var y = point[1] * h;
+              if (i === 0) {
+                ctx.moveTo(x, y);
+              } else {
+                ctx.lineTo(x, y);
+              }
+            });
+            ctx.closePath();
+          });
+          ctx.clip();
+          tintCaption.textContent =
+            "Preview — " + currentColorName + " applied to the detected wall region";
+        } else {
+          tintCaption.textContent =
+            "Preview — no wall mask available, tint applied to the whole frame";
+        }
+
+        // Multiply keeps the wall's shading and texture visible under the new
+        // color, then a source-over pass lifts the hue back up.
+        ctx.globalAlpha = 0.55;
+        ctx.globalCompositeOperation = "multiply";
+        ctx.fillStyle = hexColor;
+        ctx.fillRect(0, 0, w, h);
+
+        // Multiply can only darken — multiplying by #FFFFFF is a no-op — so a
+        // pale colour would leave the wall looking untouched. Pure White and
+        // Off White in the neutral row are exactly that case. Scale the opaque
+        // pass up with lightness so light paints actually read as applied,
+        // while mid and dark colours keep the original, texture-preserving mix.
+        var lightness = perceivedLightness(hexColor);
+        ctx.globalAlpha = 0.18 + 0.45 * Math.max(0, (lightness - 0.8) / 0.2);
+        ctx.globalCompositeOperation = "source-over";
+        ctx.fillStyle = hexColor;
+        ctx.fillRect(0, 0, w, h);
+
+        ctx.restore();
+      }
+
+      /* ------------------------------------------------------------------ */
+      /* Colour recommendation — POST /api/recommend-colors                  */
+      /* ------------------------------------------------------------------ */
+
+      /** Turn the base64 the backend returned back into a Blob.
+          Used by the camera path, where there is no original File to re-send. */
+      function base64ToBlob(base64, mime) {
+        var binary = atob(base64);
+        var bytes = new Uint8Array(binary.length);
+        for (var i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+        return new Blob([bytes], { type: mime || "image/jpeg" });
+      }
+
+      function requestRecommendations(blob, filename) {
+        var formData = new FormData();
+        formData.append("image", blob, filename || "frame.jpg");
+
+        return window.AURA.apiFetch("/api/recommend-colors", {
+          method: "POST",
+          body: formData,
+          timeoutMs: 60000
+        })
+          .then(function (data) {
+            if (!data.success) throw new Error(data.error || "Colour recommendation failed.");
+            applyRecommendations(data);
+          })
+          .catch(function (err) {
+            paletteRow.innerHTML = "";
+            primaryLabel.textContent = "Palette unavailable";
+            primaryDesc.textContent = err.message;
+            contextNote.textContent = "";
+          });
+      }
+
+      function applyRecommendations(data) {
+        recommendation = data;
+
+        // The recommended colour leads, then the five alternatives. Including
+        // the recommendation as a chip gives the user a way back to it after
+        // trying an alternative.
+        var chips = [
+          {
+            hex: data.recommended.hex,
+            name: data.recommended.name,
+            note: data.recommended.description,
+            isRecommended: true
+          }
+        ].concat(
+          (data.alternatives || []).map(function (alt) {
+            return {
+              hex: alt.hex,
+              name: alt.name,
+              note: alt.description || "",
+              isRecommended: false
+            };
+          })
+        );
+
+        paletteRow.innerHTML = chips
+          .map(function (chip) {
+            return (
+              '<button class="palette-chip' + (chip.isRecommended ? " is-selected" : "") +
+              '" data-color="' + chip.hex + '"' +
+              ' data-name="' + chip.name.replace(/"/g, "&quot;") + '"' +
+              ' data-note="' + (chip.note || "").replace(/"/g, "&quot;") + '"' +
+              ' data-recommended="' + (chip.isRecommended ? "1" : "0") + '"' +
+              ' title="' + chip.hex + '">' +
+              '<span class="swatch" style="background: ' + chip.hex + ';"></span>' +
+              '<span class="name">' + chip.name + (chip.isRecommended ? " ★" : "") + "</span>" +
+              "</button>"
+            );
+          })
+          .join("");
+
+        // Auto-apply the recommendation to the preview.
+        selectColor(data.recommended.hex, data.recommended.name, data.recommended.description, true);
+
+        var dom = data.dominant_color;
+        contextNote.textContent = dom
+          ? "Derived from the room's dominant colour " + dom.name + " (" + dom.hex + "), " +
+            Math.round(dom.share * 100) + "% of the sampled " +
+            (data.context_source === "non_wall_detections"
+              ? "non-paintable regions"
+              : "background region") + "."
+          : "No readable room context — showing a neutral starting palette.";
+      }
+
+      function selectColor(hex, name, note, isRecommended) {
+        currentColor = hex;
+        currentColorName = name;
+
+        primaryChip.style.background = hex;
+        primaryLabel.textContent =
+          (isRecommended ? "Recommended: " : "Selected: ") + name + " " + hex;
+        primaryDesc.textContent = note || "";
+
+        // Selection is exclusive across BOTH rows — otherwise picking a neutral
+        // would leave the AI chip still looking selected.
+        Array.prototype.forEach.call(
+          document.querySelectorAll("#palette-row .palette-chip, #neutral-row .palette-chip"),
+          function (el) {
+            el.classList.toggle("is-selected", el.getAttribute("data-color") === hex);
+          }
+        );
+
+        // Keep the custom picker on whatever is currently applied, so the wheel
+        // doubles as a way to fine-tune a suggestion rather than starting cold.
+        // Defined further down; hoisted, and this only runs from event handlers.
+        setCustomFromHex(hex);
+
+        drawTint(hex);
+      }
+
+      function onChipClick(e) {
+        var chip = e.target.closest(".palette-chip");
+        if (!chip) return;
+
+        selectColor(
+          chip.getAttribute("data-color"),
+          chip.getAttribute("data-name"),
+          chip.getAttribute("data-note"),
+          chip.getAttribute("data-recommended") === "1"
+        );
+      }
+
+      paletteRow.addEventListener("click", onChipClick);
+      document.getElementById("neutral-row").addEventListener("click", onChipClick);
+
+      /* ------------------------------------------------------------------ */
+      /* Custom colour — canvas wheel, hex field and system picker, all in   */
+      /* sync. Drawn locally rather than pulled from a CDN so the page still */
+      /* works with no network.                                              */
+      /* ------------------------------------------------------------------ */
+
+      var wheelCanvas = document.getElementById("color-wheel");
+      var wheelCtx = wheelCanvas.getContext("2d");
+      var lightnessInput = document.getElementById("wheel-lightness");
+      var colorInput = document.getElementById("custom-color-input");
+      var customHexInput = document.getElementById("custom-hex");
+      var customApply = document.getElementById("custom-apply");
+      var customHint = document.getElementById("custom-hint");
+
+      var WHEEL_SIZE = wheelCanvas.width;
+      var WHEEL_R = WHEEL_SIZE / 2;
+      var custom = { h: 0.63, s: 0.49, v: 0.83 };
+
+      function hsvToRgb(h, s, v) {
+        var i = Math.floor(h * 6);
+        var f = h * 6 - i;
+        var p = v * (1 - s), q = v * (1 - f * s), t = v * (1 - (1 - f) * s);
+        var r, g, b;
+        switch (i % 6) {
+          case 0: r = v; g = t; b = p; break;
+          case 1: r = q; g = v; b = p; break;
+          case 2: r = p; g = v; b = t; break;
+          case 3: r = p; g = q; b = v; break;
+          case 4: r = t; g = p; b = v; break;
+          default: r = v; g = p; b = q;
+        }
+        return [Math.round(r * 255), Math.round(g * 255), Math.round(b * 255)];
+      }
+
+      function rgbToHsv(r, g, b) {
+        r /= 255; g /= 255; b /= 255;
+        var max = Math.max(r, g, b), min = Math.min(r, g, b), d = max - min;
+        var h = 0;
+        if (d) {
+          if (max === r) h = ((g - b) / d + (g < b ? 6 : 0)) / 6;
+          else if (max === g) h = ((b - r) / d + 2) / 6;
+          else h = ((r - g) / d + 4) / 6;
+        }
+        return [h, max ? d / max : 0, max];
+      }
+
+      function rgbArrToHex(rgb) {
+        return "#" + rgb.map(function (c) {
+          return ("0" + Math.max(0, Math.min(255, c)).toString(16)).slice(-2);
+        }).join("").toUpperCase();
+      }
+
+      /** Accepts "#abc", "abc", "#AABBCC", "aabbcc". Returns "#AABBCC" or null. */
+      function normalizeHex(value) {
+        var v = String(value == null ? "" : value).trim().replace(/^#/, "");
+        if (/^[0-9a-fA-F]{3}$/.test(v)) {
+          v = v[0] + v[0] + v[1] + v[1] + v[2] + v[2];
+        }
+        return /^[0-9a-fA-F]{6}$/.test(v) ? "#" + v.toUpperCase() : null;
+      }
+
+      /* Re-rendering the wheel means an atan2 + HSV conversion per pixel, which
+         is wasted work on every drag frame when only the marker moved. The
+         gradient depends solely on value, so cache it and redraw the marker. */
+      var wheelCache = { v: -1, image: null };
+
+      function renderWheel() {
+        if (wheelCache.v !== custom.v) {
+          var image = wheelCtx.createImageData(WHEEL_SIZE, WHEEL_SIZE);
+          var data = image.data;
+          for (var y = 0; y < WHEEL_SIZE; y++) {
+            for (var x = 0; x < WHEEL_SIZE; x++) {
+              var dx = x - WHEEL_R + 0.5;
+              var dy = y - WHEEL_R + 0.5;
+              var dist = Math.sqrt(dx * dx + dy * dy);
+              var i = (y * WHEEL_SIZE + x) * 4;
+              if (dist > WHEEL_R) { data[i + 3] = 0; continue; }
+              var hue = (Math.atan2(dy, dx) / (2 * Math.PI) + 1) % 1;
+              var rgb = hsvToRgb(hue, Math.min(1, dist / WHEEL_R), custom.v);
+              data[i] = rgb[0]; data[i + 1] = rgb[1]; data[i + 2] = rgb[2];
+              data[i + 3] = 255;
+            }
+          }
+          wheelCache = { v: custom.v, image: image };
+        }
+        wheelCtx.putImageData(wheelCache.image, 0, 0);
+
+        var angle = custom.h * 2 * Math.PI;
+        var radius = custom.s * WHEEL_R;
+        var mx = WHEEL_R + Math.cos(angle) * radius;
+        var my = WHEEL_R + Math.sin(angle) * radius;
+        wheelCtx.beginPath();
+        wheelCtx.arc(mx, my, 7, 0, Math.PI * 2);
+        // Flip the ring against the backdrop so it stays visible at both ends.
+        wheelCtx.strokeStyle = custom.v > 0.55 ? "#0A1628" : "#FFFFFF";
+        wheelCtx.lineWidth = 2;
+        wheelCtx.stroke();
+      }
+
+      /** Push the current HSV out to every control. */
+      function syncCustom(updateHexField) {
+        var hex = rgbArrToHex(hsvToRgb(custom.h, custom.s, custom.v));
+        // The colour input doubles as the live swatch — its fill is the preview.
+        colorInput.value = hex.toLowerCase(); // <input type=color> wants lowercase
+        if (updateHexField !== false) {
+          customHexInput.value = hex;
+          customHexInput.classList.remove("is-invalid");
+        }
+        renderWheel();
+        return hex;
+      }
+
+      /** Drive the picker from a hex value. Returns false if it was malformed. */
+      function setCustomFromHex(hex, typedByUser) {
+        var norm = normalizeHex(hex);
+        if (!norm) return false;
+        var hsv = rgbToHsv(
+          parseInt(norm.substr(1, 2), 16),
+          parseInt(norm.substr(3, 2), 16),
+          parseInt(norm.substr(5, 2), 16)
+        );
+        custom.h = hsv[0]; custom.s = hsv[1]; custom.v = hsv[2];
+        lightnessInput.value = Math.round(custom.v * 100);
+        // Don't rewrite the field mid-keystroke.
+        syncCustom(!typedByUser);
+        return true;
+      }
+
+      function pickFromPointer(e) {
+        var rect = wheelCanvas.getBoundingClientRect();
+        // The canvas is CSS-scaled, so map client px back into canvas px.
+        var x = (e.clientX - rect.left) * (WHEEL_SIZE / rect.width) - WHEEL_R;
+        var y = (e.clientY - rect.top) * (WHEEL_SIZE / rect.height) - WHEEL_R;
+        custom.h = (Math.atan2(y, x) / (2 * Math.PI) + 1) % 1;
+        custom.s = Math.min(1, Math.sqrt(x * x + y * y) / WHEEL_R);
+        syncCustom();
+      }
+
+      var wheelDragging = false;
+      wheelCanvas.addEventListener("pointerdown", function (e) {
+        wheelDragging = true;
+        if (wheelCanvas.setPointerCapture) wheelCanvas.setPointerCapture(e.pointerId);
+        pickFromPointer(e);
+      });
+      wheelCanvas.addEventListener("pointermove", function (e) {
+        if (wheelDragging) pickFromPointer(e);
+      });
+      ["pointerup", "pointercancel", "pointerleave"].forEach(function (evt) {
+        wheelCanvas.addEventListener(evt, function () { wheelDragging = false; });
+      });
+
+      lightnessInput.addEventListener("input", function () {
+        custom.v = parseInt(lightnessInput.value, 10) / 100;
+        syncCustom();
+      });
+
+      colorInput.addEventListener("input", function () {
+        setCustomFromHex(colorInput.value);
+      });
+
+      customHexInput.addEventListener("input", function () {
+        if (!setCustomFromHex(customHexInput.value, true)) {
+          customHexInput.classList.add("is-invalid");
+        }
+      });
+
+      // Tidy up a partial entry when focus leaves.
+      customHexInput.addEventListener("blur", function () {
+        if (!normalizeHex(customHexInput.value)) {
+          customHexInput.value = rgbArrToHex(hsvToRgb(custom.h, custom.s, custom.v));
+          customHexInput.classList.remove("is-invalid");
+        } else {
+          syncCustom();
+        }
+      });
+
+      customHexInput.addEventListener("keydown", function (e) {
+        if (e.key === "Enter") { e.preventDefault(); customApply.click(); }
+      });
+
+      customApply.addEventListener("click", function () {
+        var hex = normalizeHex(customHexInput.value);
+        if (!hex) {
+          customHexInput.classList.add("is-invalid");
+          customHint.textContent = "Enter a valid hex code, e.g. #FF5733.";
+          return;
+        }
+        if (!loadedImage) {
+          customHint.textContent = "Upload a photo first — there is no wall to tint yet.";
+          return;
+        }
+        selectColor(hex, "Custom " + hex, "Manually chosen colour.", false);
+        customHint.textContent = "Applied " + hex + " to the detected wall region.";
+      });
+
+      setCustomFromHex("#6B7FD4");
+    })();
+  </script>
+</body>
+</html>

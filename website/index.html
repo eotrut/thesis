@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AURA — AI-Based Autonomous Wall Painting Robot</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body data-page="index">
+
+  <div id="navbar"></div>
+
+  <main>
+    <section class="hero">
+      <div class="container">
+        <span class="hero-badge">Undergraduate Thesis Prototype &middot; Holy Angel University</span>
+        <h1>AURA</h1>
+        <p class="subtitle">AI-Based Autonomous Wall Painting Robot</p>
+        <p class="description">
+          AURA unifies YOLOv8 deep-learning segmentation, OpenCV homography calibration,
+          raster toolpath generation, and Arduino-driven adaptive spray control into a single
+          gantry system that perceives a wall, recommends a color palette, and paints it —
+          closing the loop from camera to motor.
+        </p>
+        <div class="btn-row" style="justify-content: center;">
+          <a href="dashboard.html" class="btn btn-primary">View Dashboard</a>
+          <a href="about.html" class="btn btn-secondary">About the Project</a>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="container">
+        <p class="eyebrow" style="text-align:center;">What AURA Does</p>
+        <h2 class="section-title" style="text-align:center;">Perception, recommendation, and execution in one pipeline</h2>
+        <div class="grid grid-3">
+          <div class="card feature-card">
+            <div class="icon">🎨</div>
+            <h3>Color Recommendation</h3>
+            <p>
+              An AI-assisted module analyzes a reference image or preference input and proposes
+              a coherent color palette, rated by human evaluators for visual coherence and suitability.
+            </p>
+          </div>
+          <div class="card feature-card">
+            <div class="icon">🧿</div>
+            <h3>Live Masking View</h3>
+            <p>
+              YOLOv8 instance segmentation identifies paintable wall regions from live or captured
+              camera frames, visualized as an overlay mask before, during, and after painting.
+            </p>
+          </div>
+          <div class="card feature-card">
+            <div class="icon">📊</div>
+            <h3>Performance Metrics</h3>
+            <p>
+              System performance is benchmarked against recognized external standards —
+              ISO 9283, COCO protocol, ASTM D823, ISO/IEC 25010, and IEEE 1872 — not
+              internally invented thresholds.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="container">
+        <p class="eyebrow" style="text-align:center;">Research Team</p>
+        <h2 class="section-title" style="text-align:center;">Bachelor of Science in Computer Engineering</h2>
+        <div class="grid grid-3">
+          <div class="card team-card">
+            <div class="avatar">KM</div>
+            <h3>Manabat, Kurt Robyn A.</h3>
+            <p class="role">Lead Researcher</p>
+          </div>
+          <div class="card team-card">
+            <div class="avatar">RD</div>
+            <h3>David, Reymon Jr G.</h3>
+            <p class="role">Researcher</p>
+          </div>
+          <div class="card team-card">
+            <div class="avatar">LU</div>
+            <h3>Usi, Lester</h3>
+            <p class="role">Researcher</p>
+          </div>
+        </div>
+        <p class="institution">School of Engineering and Architecture &middot; Holy Angel University, Angeles City, Pampanga, Philippines</p>
+      </div>
+    </section>
+  </main>
+
+  <div id="footer"></div>
+
+  <script src="nav.js"></script>
+</body>
+</html>

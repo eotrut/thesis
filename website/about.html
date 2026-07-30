@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>About — AURA</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body data-page="about">
+
+  <div id="navbar"></div>
+
+  <main>
+    <div class="container">
+      <div class="page-header">
+        <p class="eyebrow">About the Project</p>
+        <h1>AURA: AI-Based Autonomous Wall Painting Robot</h1>
+        <p style="max-width: none;">Integrating Deep Learning Segmentation, Color Recommendation, and Adaptive Spray Control</p>
+      </div>
+
+      <section class="section" style="padding-top: 0;">
+        <p class="abstract-text">
+          AURA unifies deep-learning spatial segmentation (YOLOv8), OpenCV-based homography calibration,
+          raster toolpath generation, pyserial-mediated Arduino adaptive spray control, and AI-based color
+          recommendation into a single undergraduate-scale prototype: a 2D vertical gantry driven by dual-X
+          and single-Y NEMA 23 stepper motors. A captured wall image is segmented into paintable regions,
+          calibrated into real-world coordinates, converted into a raster toolpath, and executed by an
+          Arduino-controlled spray system. Performance is evaluated against recognized external standards —
+          ISO 9283, the COCO protocol, ASTM D823, ISO/IEC 25010, and IEEE 1872 — rather than internally
+          defined thresholds.
+        </p>
+      </section>
+
+      <section class="section" style="padding-top: 0;">
+        <h2 class="section-title">System Pipeline</h2>
+        <div class="card">
+          <div class="pipeline">
+            <div class="pipeline-step">Camera</div>
+            <span class="pipeline-arrow">→</span>
+            <div class="pipeline-step">YOLOv8 Segmentation</div>
+            <span class="pipeline-arrow">→</span>
+            <div class="pipeline-step">Coordinate Mapping</div>
+            <span class="pipeline-arrow">→</span>
+            <div class="pipeline-step">Path Generation</div>
+            <span class="pipeline-arrow">→</span>
+            <div class="pipeline-step">Serial Commands</div>
+            <span class="pipeline-arrow">→</span>
+            <div class="pipeline-step">Arduino</div>
+            <span class="pipeline-arrow">→</span>
+            <div class="pipeline-step">Motors</div>
+          </div>
+          <p class="metric-note" style="font-style: normal; margin-top: 6px;">
+            A USB/HD camera captures the wall; YOLOv8 outputs a paintable-region mask; OpenCV homography
+            calibration (physical corner markers) maps pixel coordinates to millimeters; a raster
+            (boustrophedon) planner generates the toolpath; commands stream over pyserial at 115200 baud to
+            an Arduino Mega 2560 + RAMPS 1.4, which drives the NEMA 23 motors and spray subsystem.
+          </p>
+        </div>
+      </section>
+
+      <section class="section" style="padding-top: 0;">
+        <h2 class="section-title">Tech Stack</h2>
+        <ul class="tech-list">
+          <li>Python 3.11</li>
+          <li>PyTorch + CUDA 12.1</li>
+          <li>Ultralytics YOLOv8 (Instance Segmentation)</li>
+          <li>OpenCV</li>
+          <li>pyserial</li>
+          <li>Roboflow (dataset annotation)</li>
+          <li>Kaggle Tesla T4 (training)</li>
+          <li>Arduino Mega 2560 + RAMPS 1.4</li>
+        </ul>
+      </section>
+
+      <section class="section" style="padding-top: 0;">
+        <h2 class="section-title">Evaluation Standards</h2>
+        <div class="card">
+          <div style="overflow-x: auto;">
+            <table class="standards-table">
+              <thead>
+                <tr>
+                  <th>Standard</th>
+                  <th>Metric</th>
+                  <th>What It Measures</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td class="standard-name">ISO 9283:1998</td>
+                  <td>Motion (Positional) Accuracy</td>
+                  <td>Commanded vs. measured pose (mm) — manipulating industrial robot performance criteria and test methods.</td>
+                </tr>
+                <tr>
+                  <td class="standard-name">COCO Protocol</td>
+                  <td>Segmentation Accuracy</td>
+                  <td>IoU and mAP at IoU ≥ 0.50, matching Ultralytics' own YOLOv8 evaluation framework.</td>
+                </tr>
+                <tr>
+                  <td class="standard-name">ASTM D823</td>
+                  <td>Spray Consistency &amp; Coverage Uniformity</td>
+                  <td>Uniformity of applied coating across test panels/wall regions; percentage of area evenly coated with no gaps or excess overlap.</td>
+                </tr>
+                <tr>
+                  <td class="standard-name">ISO/IEC 25010:2011</td>
+                  <td>Color Recommendation Quality</td>
+                  <td>5-point Likert rating of palette coherence, suitability, and satisfaction (SQuaRE usability sub-characteristics).</td>
+                </tr>
+                <tr>
+                  <td class="standard-name">IEEE 1872-2015</td>
+                  <td>Overall System Integration</td>
+                  <td>Structured end-to-end integration assessment against standard ontologies for robotics and automation.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" style="padding-top: 0;">
+        <h2 class="section-title">Research Team</h2>
+        <div class="grid grid-3">
+          <div class="card team-card">
+            <div class="avatar">KM</div>
+            <h3>Manabat, Kurt Robyn A.</h3>
+            <p class="role">Lead Researcher</p>
+          </div>
+          <div class="card team-card">
+            <div class="avatar">RD</div>
+            <h3>David, Reymon Jr G.</h3>
+            <p class="role">Researcher</p>
+          </div>
+          <div class="card team-card">
+            <div class="avatar">LU</div>
+            <h3>Usi, Lester</h3>
+            <p class="role">Researcher</p>
+          </div>
+        </div>
+        <p class="institution">Bachelor of Science in Computer Engineering &middot; School of Engineering and Architecture &middot; Holy Angel University, Angeles City, Pampanga, Philippines</p>
+      </section>
+    </div>
+  </main>
+
+  <div id="footer"></div>
+
+  <script src="nav.js"></script>
+</body>
+</html>

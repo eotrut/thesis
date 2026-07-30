@@ -54,6 +54,15 @@ $RECYCLE.BIN/
 *.onnx
 bus.jpg
 
+# Model weights (too large for git) — explicit paths; already covered by *.pt
+# above, kept for clarity about where the checkpoint actually lives.
+website/model/best.pt
+website/model/*.pt
+
+# Explicit bytecode patterns — already covered by *.py[cod] above.
+*.pyc
+*.pyo
+
 # --- LaTeX (if used later) ---
 *.aux
 *.log

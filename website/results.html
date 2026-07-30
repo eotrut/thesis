@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Results — AURA</title>
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    /* The exported validation frames are square (640x640, the training imgsz).
+       The shared .gallery-card rule crops to 4/3 with object-fit: cover, which
+       would slice the top and bottom off every mask. Show them whole instead. */
+    .gallery-card img {
+      aspect-ratio: 1 / 1;
+      object-fit: contain;
+    }
+  </style>
+</head>
+<body data-page="results">
+
+  <div id="navbar"></div>
+
+  <main>
+    <div class="container">
+      <div class="page-header">
+        <p class="eyebrow">Evaluation</p>
+        <h1>Model Performance — YOLOv8 Instance Segmentation</h1>
+      </div>
+
+      <div class="notice-banner" style="margin-bottom: 32px;">
+        <span>⚠️</span>
+        <span>Preliminary Results — Trained on 300 images. Metrics below are from the current v2 run and will be re-evaluated as the dataset expands toward ~1,000 images.</span>
+      </div>
+
+      <section class="section" style="padding-top: 0;">
+        <h2 class="section-title">Segmentation Metrics</h2>
+        <div class="grid grid-4">
+          <div class="card metric-card">
+            <p class="metric-label">mAP@0.50</p>
+            <p class="metric-value">0.780</p>
+            <p class="metric-note" style="font-style: normal;">Mask mAP at IoU 0.50</p>
+          </div>
+          <div class="card metric-card">
+            <p class="metric-label">mAP@0.50–0.95</p>
+            <p class="metric-value">0.548</p>
+            <p class="metric-note" style="font-style: normal;">Averaged over IoU 0.50–0.95</p>
+          </div>
+          <div class="card metric-card">
+            <p class="metric-label">Precision</p>
+            <p class="metric-value">0.845</p>
+            <p class="metric-note" style="font-style: normal;">Of predicted regions, share correct</p>
+          </div>
+          <div class="card metric-card">
+            <p class="metric-label">Recall</p>
+            <p class="metric-value">0.729</p>
+            <p class="metric-note" style="font-style: normal;">Of actual regions, share found</p>
+          </div>
+        </div>
+        <p class="abstract-text" style="margin-top: 20px; font-size: 0.88rem;">
+          Precision (0.845) exceeding recall (0.729) means the model is conservative: regions it marks as
+          paintable wall are usually right, but it still misses some wall area — the safer failure mode for a
+          painting robot, since under-segmentation leaves a gap while over-segmentation risks painting a
+          non-paintable surface.
+        </p>
+      </section>
+
+      <section class="section" style="padding-top: 0;">
+        <h2 class="section-title">Training Configuration</h2>
+        <div class="grid grid-3">
+          <div class="card metric-card">
+            <p class="metric-label">Dataset Size</p>
+            <p class="metric-value" style="font-size: 1.3rem; color: var(--text);">300 images (current) → 1,000 images (target)</p>
+            <p class="metric-note" style="font-style: normal;">2 classes — wall, non-paintable</p>
+          </div>
+          <div class="card metric-card">
+            <p class="metric-label">Training Compute</p>
+            <p class="metric-value" style="font-size: 1.3rem; color: var(--text);">Kaggle Tesla T4 GPU</p>
+            <p class="metric-note" style="font-style: normal;">Inference runs locally on an RTX 3050</p>
+          </div>
+          <div class="card metric-card">
+            <p class="metric-label">Model</p>
+            <p class="metric-value" style="font-size: 1.3rem; color: var(--text);">YOLOv8n-seg</p>
+            <p class="metric-note" style="font-style: normal;">COCO-pretrained, fine-tuned · Ultralytics</p>
+          </div>
+          <div class="card metric-card">
+            <p class="metric-label">Epochs</p>
+            <p class="metric-value" style="font-size: 1.3rem; color: var(--text);">100</p>
+            <p class="metric-note" style="font-style: normal;">Early stopping, patience = 20</p>
+          </div>
+          <div class="card metric-card">
+            <p class="metric-label">Image Size</p>
+            <p class="metric-value" style="font-size: 1.3rem; color: var(--text);">640 × 640</p>
+            <p class="metric-note" style="font-style: normal;">Letterboxed at inference</p>
+          </div>
+          <div class="card metric-card">
+            <p class="metric-label">Confidence Threshold</p>
+            <p class="metric-value" style="font-size: 1.3rem; color: var(--text);">0.25</p>
+            <p class="metric-note" style="font-style: normal;">IoU 0.45 for mask NMS</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" style="padding-top: 0;">
+        <h2 class="section-title">Validation Output Gallery</h2>
+        <div class="grid grid-3">
+          <div class="card gallery-card">
+            <img src="assets/test_result_1.jpg" alt="Test Result 1 — wall segmentation mask overlay" loading="lazy" />
+            <p class="gallery-caption">Test Result 1 — Wall Segmentation</p>
+            <span class="badge badge-info">YOLOv8 Instance Segmentation | conf=0.25</span>
+          </div>
+          <div class="card gallery-card">
+            <img src="assets/test_result_2.jpg" alt="Test Result 2 — wall segmentation mask overlay" loading="lazy" />
+            <p class="gallery-caption">Test Result 2 — Wall Segmentation</p>
+            <span class="badge badge-info">YOLOv8 Instance Segmentation | conf=0.25</span>
+          </div>
+          <div class="card gallery-card">
+            <img src="assets/test_result_3.jpg" alt="Test Result 3 — wall segmentation mask overlay" loading="lazy" />
+            <p class="gallery-caption">Test Result 3 — Wall Segmentation</p>
+            <span class="badge badge-info">YOLOv8 Instance Segmentation | conf=0.25</span>
+          </div>
+          <div class="card gallery-card">
+            <img src="assets/test_result_4.jpg" alt="Test Result 4 — wall segmentation mask overlay" loading="lazy" />
+            <p class="gallery-caption">Test Result 4 — Wall Segmentation</p>
+            <span class="badge badge-info">YOLOv8 Instance Segmentation | conf=0.25</span>
+          </div>
+          <div class="card gallery-card">
+            <img src="assets/test_result_5.jpg" alt="Test Result 5 — wall segmentation mask overlay" loading="lazy" />
+            <p class="gallery-caption">Test Result 5 — Wall Segmentation</p>
+            <span class="badge badge-info">YOLOv8 Instance Segmentation | conf=0.25</span>
+          </div>
+          <div class="card gallery-card">
+            <img src="assets/test_result_6.jpg" alt="Test Result 6 — wall segmentation mask overlay" loading="lazy" />
+            <p class="gallery-caption">Test Result 6 — Wall Segmentation</p>
+            <span class="badge badge-info">YOLOv8 Instance Segmentation | conf=0.25</span>
+          </div>
+        </div>
+        <p class="abstract-text" style="margin-top: 28px; font-size: 0.9rem;">
+          The masks above were produced by a YOLOv8n-seg instance segmentation model fine-tuned on a
+          300-image custom dataset annotated via Roboflow and trained on a Kaggle Tesla T4 GPU. Metrics on
+          this page come from that v2 run and are reported as preliminary; they will be recomputed after the
+          dataset reaches the 1,000-image target.
+        </p>
+      </section>
+    </div>
+  </main>
+
+  <div id="footer"></div>
+
+  <script src="nav.js"></script>
+</body>
+</html>

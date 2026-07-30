@@ -1,0 +1,288 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard — AURA</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body data-page="dashboard">
+
+  <div id="navbar"></div>
+
+  <main>
+    <div class="container">
+      <div class="page-header">
+        <p class="eyebrow">System Dashboard</p>
+        <h1>Robot Status Overview</h1>
+        <p>Live operational state of the AURA gantry, segmentation pipeline, and current painting session.</p>
+      </div>
+
+      <div class="grid grid-3 section" style="padding-top: 0;">
+        <div class="card status-card">
+          <p class="status-label">Robot Status</p>
+          <span class="badge badge-idle" id="robot-status-badge">Connecting…</span>
+          <p class="status-sub" id="robot-status-sub">Contacting backend…</p>
+        </div>
+
+        <div class="card status-card">
+          <p class="status-label">Camera</p>
+          <span class="badge badge-idle" id="camera-badge">Unknown</span>
+          <p class="status-sub" id="camera-sub">—</p>
+        </div>
+
+        <div class="card status-card">
+          <p class="status-label">Segmentation Confidence</p>
+          <p class="status-value" id="confidence-value">--</p>
+          <div class="progress-track">
+            <div class="progress-fill" id="confidence-fill" style="width: 0%;"></div>
+          </div>
+          <p class="status-sub" id="confidence-sub">No frame processed yet</p>
+        </div>
+
+        <div class="card status-card">
+          <p class="status-label">Inference Device</p>
+          <p class="status-value" id="device-value" style="font-size: 1.15rem;">—</p>
+          <p class="status-sub" id="device-sub">—</p>
+        </div>
+
+        <div class="card status-card">
+          <p class="status-label">Painting Progress</p>
+          <p class="status-value" id="progress-value">0%</p>
+          <div class="progress-track">
+            <div class="progress-fill" id="progress-fill" style="width: 0%;"></div>
+          </div>
+          <p class="status-sub">Gantry control not yet connected</p>
+        </div>
+
+        <div class="card status-card">
+          <p class="status-label">Session</p>
+          <p class="status-value" id="session-date" style="font-size: 1.15rem;">—</p>
+          <p class="status-sub" id="session-sub">No active session</p>
+        </div>
+      </div>
+
+      <div class="section" style="padding-top: 0;">
+        <h2 class="section-title">Recent Activity</h2>
+        <div class="card">
+          <div class="log-panel" id="log-panel">
+            <div class="log-entry"><span class="log-time">[--:--]</span><span class="log-message">Dashboard opened — waiting for backend…</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <div id="footer"></div>
+
+  <script src="nav.js"></script>
+  <script>
+    (function () {
+      var POLL_INTERVAL_MS = 3000;
+
+      var robotBadge = document.getElementById("robot-status-badge");
+      var robotSub = document.getElementById("robot-status-sub");
+      var cameraBadge = document.getElementById("camera-badge");
+      var cameraSub = document.getElementById("camera-sub");
+      var confidenceValue = document.getElementById("confidence-value");
+      var confidenceFill = document.getElementById("confidence-fill");
+      var confidenceSub = document.getElementById("confidence-sub");
+      var deviceValue = document.getElementById("device-value");
+      var deviceSub = document.getElementById("device-sub");
+      var sessionDate = document.getElementById("session-date");
+      var sessionSub = document.getElementById("session-sub");
+      var logPanel = document.getElementById("log-panel");
+
+      sessionDate.textContent = new Date().toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "long",
+        day: "numeric"
+      });
+
+      /* ------------------------------------------------------------------ */
+      /* Activity log — entries are appended on real state changes only, so   */
+      /* the panel reflects the backend rather than a canned script.          */
+      /* ------------------------------------------------------------------ */
+
+      var MAX_LOG_ENTRIES = 40;
+      var seenStates = {};
+      var logInitialized = false;
+
+      function timestamp() {
+        var d = new Date();
+        return (
+          "[" + String(d.getHours()).padStart(2, "0") +
+          ":" + String(d.getMinutes()).padStart(2, "0") + "]"
+        );
+      }
+
+      function log(message) {
+        if (!logInitialized) {
+          logPanel.innerHTML = "";
+          logInitialized = true;
+        }
+        var entry = document.createElement("div");
+        entry.className = "log-entry";
+        entry.innerHTML =
+          '<span class="log-time">' + timestamp() + "</span>" +
+          '<span class="log-message"></span>';
+        entry.querySelector(".log-message").textContent = message;
+        logPanel.appendChild(entry);
+
+        while (logPanel.children.length > MAX_LOG_ENTRIES) {
+          logPanel.removeChild(logPanel.firstChild);
+        }
+        logPanel.scrollTop = logPanel.scrollHeight;
+      }
+
+      /** Log only when a named piece of state actually changes. */
+      function logChange(key, value, message) {
+        if (seenStates[key] === value) return;
+        seenStates[key] = value;
+        log(message);
+      }
+
+      /* ------------------------------------------------------------------ */
+      /* Status polling                                                      */
+      /* ------------------------------------------------------------------ */
+
+      function setBadge(el, text, className) {
+        el.textContent = text;
+        el.className = "badge " + className;
+      }
+
+      function applyStatus(status) {
+        logChange("connection", "online", "Connected to AURA backend");
+
+        setBadge(robotBadge, status.robot_status, status.robot_status_class);
+        robotSub.textContent = status.model_loaded
+          ? "Segmentation pipeline ready"
+          : "Segmentation model not loaded";
+
+        // --- Camera ---
+        if (status.camera_available) {
+          setBadge(
+            cameraBadge,
+            status.camera_streaming ? "Streaming" : "Connected",
+            status.camera_streaming ? "badge-running" : "badge-connected"
+          );
+          cameraSub.textContent =
+            "Index " + status.camera_index +
+            (status.camera_backend ? " · " + status.camera_backend : "");
+        } else {
+          setBadge(cameraBadge, "Not detected", "badge-error");
+          cameraSub.textContent = status.camera_error
+            ? status.camera_error.slice(0, 90)
+            : "No camera available";
+        }
+        logChange(
+          "camera",
+          !!status.camera_available,
+          status.camera_available ? "Camera feed connected" : "Camera not detected"
+        );
+
+        // --- Segmentation confidence (last frame the backend processed) ---
+        var last = status.last_inference || {};
+        if (last.confidence !== null && last.confidence !== undefined) {
+          var pct = last.confidence * 100;
+          confidenceValue.textContent = pct.toFixed(1) + "%";
+          confidenceFill.style.width = Math.min(100, pct) + "%";
+          confidenceSub.textContent =
+            (last.wall_detected ? "Wall detected" : "No wall in frame") +
+            " · " + last.detection_count + " object(s)" +
+            (last.inference_ms ? " · " + last.inference_ms + " ms" : "") +
+            (last.source ? " · " + last.source : "");
+        } else {
+          confidenceValue.textContent = "--";
+          confidenceFill.style.width = "0%";
+          confidenceSub.textContent = status.model_loaded
+            ? "No frame processed yet"
+            : "Model not loaded";
+        }
+
+        // --- Inference device ---
+        if (status.model_loaded) {
+          deviceValue.textContent = status.cuda_available ? "CUDA" : "CPU";
+          deviceSub.textContent = status.cuda_available
+            ? (status.gpu_name || "GPU") +
+              (status.gpu_memory_gb ? " · " + status.gpu_memory_gb + " GB" : "")
+            : "No CUDA device — inference runs on CPU";
+        } else {
+          deviceValue.textContent = "—";
+          deviceSub.textContent = status.model_error
+            ? status.model_error.slice(0, 90)
+            : "Model not loaded";
+        }
+
+        sessionSub.textContent = status.model_loaded
+          ? status.model + " · " + status.frames_label
+          : "No active session";
+
+        logChange(
+          "model",
+          !!status.model_loaded,
+          status.model_loaded
+            ? "YOLOv8 segmentation model loaded (" + status.model_path + ")"
+            : "Segmentation model NOT loaded — " + (status.model_error || "unknown error")
+        );
+        if (status.using_fallback_model) {
+          logChange(
+            "fallback",
+            true,
+            "WARNING: running the COCO-pretrained fallback, not the fine-tuned AURA weights"
+          );
+        }
+        logChange(
+          "cuda",
+          !!status.cuda_available,
+          status.cuda_available
+            ? "CUDA active on " + status.gpu_name
+            : "CUDA unavailable — running on CPU"
+        );
+      }
+
+      function applyOffline(message) {
+        setBadge(robotBadge, "Offline", "badge-error");
+        robotSub.textContent = "Backend not reachable";
+        setBadge(cameraBadge, "Unknown", "badge-idle");
+        cameraSub.textContent = "—";
+        confidenceValue.textContent = "--";
+        confidenceFill.style.width = "0%";
+        confidenceSub.textContent = "Backend offline";
+        deviceValue.textContent = "—";
+        deviceSub.textContent = "—";
+        sessionSub.textContent = "No active session";
+
+        logChange("connection", "offline", message);
+      }
+
+      function poll() {
+        // Skip work while the tab is in the background; resume on focus.
+        if (document.hidden) return;
+
+        window.AURA.apiFetch("/api/status", { timeoutMs: 5000 })
+          .then(function (status) {
+            status.model_path = status.model_path || "unknown";
+            status.frames_label =
+              (status.last_inference && status.last_inference.frames_processed
+                ? status.last_inference.frames_processed
+                : 0) + " frames processed";
+            applyStatus(status);
+          })
+          .catch(function (err) {
+            applyOffline(
+              "Backend unreachable — start it with `python backend/app.py` (" +
+                err.message.split(".")[0] + ")"
+            );
+          });
+      }
+
+      poll();
+      setInterval(poll, POLL_INTERVAL_MS);
+      document.addEventListener("visibilitychange", function () {
+        if (!document.hidden) poll();
+      });
+    })();
+  </script>
+</body>
+</html>
