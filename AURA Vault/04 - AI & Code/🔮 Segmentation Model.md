@@ -24,7 +24,7 @@ Given a wall image from the fixed camera, output an **instance-segmentation mask
 | Option | Pros | Cons |
 |---|---|---|
 | COCO-pretrained weights (default) | No labeling cost; strong general-object priors | Not painting-specific |
-| Roboflow-labeled custom set | Matches real wall scenarios | Time cost (annotation effort) |
+| Roboflow-labeled custom set | Matches real test walls | Time cost (annotation effort) |
 | ADE20K (`wall` class) | Large, free, labeled | General scenes, not painting-specific — considered as a fallback pretraining source if Roboflow data proves too limited |
 
 ## Why YOLOv8, Not MobileNetV3 + DeepLabV3+
@@ -53,28 +53,38 @@ YOLOv8 masks -> morphological clean (open/close) -> contour extraction ->
 
 ## 📊 Training & Testing Progress
 
-### 2026-07-30 — First Custom Fine-Tune Run Complete
+### 2026-07-30 — Run 1: 150-image dataset (instance segmentation confirmed)
+- Object detection tried first → ruled out (bounding boxes only, not masks)
+- Switched to instance segmentation → correctly masks wall and non-paintable regions
+- Pipeline (Roboflow → Kaggle T4 → best.pt) confirmed working end-to-end
+- Metrics: not recorded for this run (exploratory)
 
-**Annotation approach tried:**
-1. **Object Detection (bounding boxes)** — attempted first. Result: model only drew bounding boxes around the wall and objects; no pixel-level masks produced. **Not suitable for AURA's needs.** Abandoned.
-2. **Instance Segmentation (polygon masks)** — switched annotation type in Roboflow. Result: model now correctly masks the wall region and other objects at the pixel level. **Confirmed correct approach going forward.**
+---
 
-> [!success] Key finding
-> Instance segmentation is confirmed as the correct annotation type for AURA. Object detection was ruled out — it cannot produce the pixel masks that the coordinate-mapping and path-planning stages require.
+### 2026-07-30 — Run 2: 300-image dataset (aura_seg_v2)
 
-**Dataset status as of 2026-07-30:**
-| Metric | Value |
+**Training config:**
+| Parameter | Value |
 |---|---|
-| Total annotated images | ~150 |
-| Split | Train / Validation / Test |
-| Annotation tool | Roboflow (instance segmentation polygons) |
-| Training compute | Kaggle Tesla T4 GPU |
-| Model | YOLOv8 instance segmentation |
-| Target dataset size | ~1,000 images (by end of thesis) |
+| Model | YOLOv8n-seg (COCO pretrained) |
+| Dataset | 300 images, 2 classes (wall, non-paintable) |
+| Augmentation | 3x multiplier via Roboflow |
+| Epochs | 100 (with patience=20 early stopping) |
+| Image size | 640×640 |
+| Batch size | 16 |
+| Compute | Kaggle Tesla T4 GPU |
+| Split | 70/20/10 train/val/test |
 
-**What was validated:** Train → Validate → Test pipeline on Kaggle with the current ~150-image set is working end-to-end. Results screenshots captured (attach to Chapter 4 evidence folder when ready).
+**Test set results (29 images):**
+| Metric | Value | Notes |
+|---|---|---|
+| **mAP@0.50** | **0.780** | Above 0.70 threshold — solid result |
+| **mAP@0.50-95** | **0.548** | Strict metric, respectable at this dataset size |
+| **Precision** | **0.845** | When model says "wall," correct 84.5% of the time |
+| **Recall** | **0.729** | Catches 73% of actual wall regions — improves with more data |
 
-**Next steps:**
-- Continue expanding dataset toward ~1,000 images
-- Re-run fine-tune and re-evaluate metrics as dataset grows
-- Document mAP/IoU numbers per training run for Chapter 4 — Results
+> [!success] Assessment
+> Strong preliminary results for 300 images. Precision > Recall indicates the model is conservative — it occasionally misses wall edges rather than falsely labeling non-walls. This is the safer failure mode for a painting robot. All metrics expected to improve as dataset grows toward 1,000 images.
+
+**Weights saved:** `best.pt` — deployed to `/website/model/best.pt` for backend integration
+**Next training run:** target ~600–1,000 images
