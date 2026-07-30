@@ -1,8 +1,8 @@
 ---
 tags: [ai, segmentation, deep-learning]
 created: 2026-03-29
-updated: 2026-07-12
-status: synced-with-manuscript
+updated: 2026-07-30
+status: training-in-progress
 ---
 # 🔮 Segmentation Model
 
@@ -24,7 +24,7 @@ Given a wall image from the fixed camera, output an **instance-segmentation mask
 | Option | Pros | Cons |
 |---|---|---|
 | COCO-pretrained weights (default) | No labeling cost; strong general-object priors | Not painting-specific |
-| Roboflow-labeled custom set | Matches real test walls | Time cost (annotation effort) |
+| Roboflow-labeled custom set | Matches real wall scenarios | Time cost (annotation effort) |
 | ADE20K (`wall` class) | Large, free, labeled | General scenes, not painting-specific — considered as a fallback pretraining source if Roboflow data proves too limited |
 
 ## Why YOLOv8, Not MobileNetV3 + DeepLabV3+
@@ -48,3 +48,33 @@ YOLOv8 masks -> morphological clean (open/close) -> contour extraction ->
 
 > [!tip] "Good enough" for the thesis
 > The mask only needs to be accurate enough that the **raster planner** fills the right area. Small boundary errors are absorbed by spray overlap. Perfect segmentation is not required — reliable region identification is, and the zero-shot-first strategy means fine-tuning effort is spent only if that reliability isn't already there.
+
+---
+
+## 📊 Training & Testing Progress
+
+### 2026-07-30 — First Custom Fine-Tune Run Complete
+
+**Annotation approach tried:**
+1. **Object Detection (bounding boxes)** — attempted first. Result: model only drew bounding boxes around the wall and objects; no pixel-level masks produced. **Not suitable for AURA's needs.** Abandoned.
+2. **Instance Segmentation (polygon masks)** — switched annotation type in Roboflow. Result: model now correctly masks the wall region and other objects at the pixel level. **Confirmed correct approach going forward.**
+
+> [!success] Key finding
+> Instance segmentation is confirmed as the correct annotation type for AURA. Object detection was ruled out — it cannot produce the pixel masks that the coordinate-mapping and path-planning stages require.
+
+**Dataset status as of 2026-07-30:**
+| Metric | Value |
+|---|---|
+| Total annotated images | ~150 |
+| Split | Train / Validation / Test |
+| Annotation tool | Roboflow (instance segmentation polygons) |
+| Training compute | Kaggle Tesla T4 GPU |
+| Model | YOLOv8 instance segmentation |
+| Target dataset size | ~1,000 images (by end of thesis) |
+
+**What was validated:** Train → Validate → Test pipeline on Kaggle with the current ~150-image set is working end-to-end. Results screenshots captured (attach to Chapter 4 evidence folder when ready).
+
+**Next steps:**
+- Continue expanding dataset toward ~1,000 images
+- Re-run fine-tune and re-evaluate metrics as dataset grows
+- Document mAP/IoU numbers per training run for Chapter 4 — Results
