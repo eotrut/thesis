@@ -44,6 +44,13 @@ $RECYCLE.BIN/
 # --- Logs ---
 *.log
 
+# --- Thesis manuscript ---
+# Kept out of the repo: Word binaries diff as opaque blobs, bloat history on
+# every save, and the working copy lives elsewhere. Earlier revisions are still
+# in history (see 74eb49f) if one is ever needed back.
+*.docx
+~$*.docx
+
 # --- Build artifacts / temp ---
 *.tmp
 *.bak
