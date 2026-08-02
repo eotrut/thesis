@@ -71,3 +71,22 @@ status: active
 - [ ] One missed occurrence of the ASTM fix remains (Introduction summary paragraph still reads "ASTM D4147 and D3270 for coating uniformity" instead of "ASTM D823").
 
 **Advisor/defense-readiness note:** Document is functionally ready to pass at 9/10; closing the 6 items above is a 15–20 minute cleanup pass, not new work.
+
+### 2026-08-02 — Methods Step 5 (Toolpath Generation) expanded
+**Context:** Gantry plate is the last hardware part still on order, so Kurt shifted to software-only work: coordinate mapping (homography) + toolpath generation, the pipeline stage between segmentation and the not-yet-built serial/Arduino bridge.
+
+**Changes made:**
+- Manuscript's Procedure Step 5 ("Toolpath Generation") expanded in `Thesis Paper.docx` to describe the finalized design: mask polygon mapped into the Step-2 calibrated mm frame; non-paintable regions (doors/windows/obstacles) geometrically subtracted from the paintable polygon so rows skip over them; serpentine (boustrophedon) row traversal to minimize travel; output serialized into the G-code-style commands used in Step 8. Rendered and visually verified before writing back — no other section touched. Results/Discussion chapters remain intentionally blank pending dataset completion, per Kurt's instruction.
+- Vault synced: [[📐 Path Planning & G-code Generation]] (added obstacle-subtraction + calibration-fallback detail, marked in-development) and Chapter 3 Step 5 (cross-referenced).
+- Implementation itself (`coordinate_mapping.py`, `toolpath_generator.py`, `POST /api/toolpath`, test/viz script) was handed to Kurt as a Claude Code prompt rather than built in this session — recommended running it under Opus given the polygon/geometry edge cases (row-hole intersection, serpentine ordering). Not yet confirmed built/run.
+
+### 2026-08-03 — Toolpath build verified; envelope-clipping decision made
+**Context:** Kurt ran the 2026-08-02 handoff prompt in Claude Code (Opus, extra-high effort). Confirmed on disk: `backend/coordinate_mapping.py`, `backend/toolpath_generator.py`, `backend/tools/test_toolpath.py`, `POST /api/toolpath` in `app.py`, updated `requirements.txt`/`README.md`, and a new Toolpath tab on `camera-view.html`. Tested against the real `best.pt` model (not synthetic data) on existing test images — e.g. test_result_1.jpg: 0.614 m² paintable, 37 rows, 96.5% spray efficiency (1.1 m dry travel of 31.6 m total). Obstacle routing (doors, switch plates) verified visually.
+
+**Open decision from the handoff — resolved:** whether an out-of-envelope wall mask (segmentation extends past the calibrated area) should be clipped or rejected.
+
+**Decision: clip, not reject.** Rationale: the gantry's X-axis rail is only 4.5 ft (1371.6 mm) against walls that are routinely wider — full wall coverage was always planned as multiple gantry positions, manually repositioned and re-calibrated between passes (see [[⚙️ Mechanical Design]], rail lengths locked this session: X = 4.5 ft / 1371.6 mm, Y = 9 ft / 2743.2 mm). Under that plan, a mask extending past the current reachable envelope is the *normal* case on most runs, not an error — reject would refuse to generate a toolpath on nearly every real wall. Clip is what implements the multi-pass workflow: paint what's reachable now, report the leftover for the next repositioned pass.
+
+**Implementation guidance recorded for the next Claude Code pass:** clip against the gantry's **physical rail travel limits** (minus a homing/limit-switch safety margin), not the 4-marker calibration quad — the markers only define the pixel↔mm mapping, not where the machine can physically move. Keep a hard soft-limit check at G-code emission as a backstop (standard GRBL/CNC practice). `/api/toolpath` should report clipped/skipped paintable area so it's visible how much wall still needs another pass. Full detail in [[📐 Path Planning & G-code Generation]] § Envelope Clipping.
+
+**Relevance to Chapter 4/5:** this is a genuine design decision with engineering rationale (not just an implementation detail) — worth a sentence in Methodology if not already covered, and a natural candidate for the Discussion chapter's "system limitations" framing (multi-pass coverage is a scope choice, not a failure mode).

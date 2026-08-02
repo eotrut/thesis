@@ -55,6 +55,39 @@
             <p class="metric-note" style="font-style: normal;">Of actual regions, share found</p>
           </div>
         </div>
+
+        <div class="card" style="margin-top: 20px; padding: 20px;">
+          <h3 class="section-title" style="margin-bottom: 16px;">What These Numbers Mean</h3>
+
+          <p class="metric-label">mAP@0.50 — 0.780</p>
+          <p style="margin-top: 4px; margin-bottom: 16px;">
+            The model's primary accuracy score. It correctly detects and outlines a paintable wall region 78% of
+            the time, judged by whether the predicted mask overlaps the true region by at least 50%. A score above
+            0.75 is generally considered strong for a custom single-domain dataset.
+          </p>
+
+          <p class="metric-label">mAP@0.50–0.95 — 0.548</p>
+          <p style="margin-top: 4px; margin-bottom: 16px;">
+            A stricter version of the same score, averaged across overlap thresholds from 50% all the way up to
+            95%. It penalises slightly imprecise mask edges heavily, so it is always lower than mAP@0.50. A score
+            of 0.548 is competitive for instance segmentation on a 300-image dataset.
+          </p>
+
+          <p class="metric-label">Precision — 0.845</p>
+          <p style="margin-top: 4px; margin-bottom: 16px;">
+            When the model labels a region as paintable wall, it is correct 84.5% of the time. High precision
+            means the robot rarely attempts to paint a surface it should not — the critical safety property for
+            AURA.
+          </p>
+
+          <p class="metric-label">Recall — 0.729</p>
+          <p style="margin-top: 4px;">
+            The model successfully finds 72.9% of all actual paintable wall areas in a scene. Lower recall means
+            it occasionally leaves a patch undetected rather than painting the wrong surface — the preferable
+            failure mode over over-segmentation for a wall-painting robot.
+          </p>
+        </div>
+
         <p class="abstract-text" style="margin-top: 20px; font-size: 0.88rem;">
           Precision (0.845) exceeding recall (0.729) means the model is conservative: regions it marks as
           paintable wall are usually right, but it still misses some wall area — the safer failure mode for a

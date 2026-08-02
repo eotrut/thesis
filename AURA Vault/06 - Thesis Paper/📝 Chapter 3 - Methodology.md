@@ -1,7 +1,7 @@
 ---
 tags: [thesis, chapter-3, methodology]
 created: 2026-03-29
-updated: 2026-07-18
+updated: 2026-08-02
 status: synced-with-manuscript
 ---
 # 📝 Chapter 3 — Methodology
@@ -33,7 +33,7 @@ Minimum **five (5) evaluators** rate recommended color palettes on a 1–5 scale
 2. **Camera + Calibration** — mount USB/HD camera; affix corner markers; compute OpenCV homography/scaling transform (pixel → mm).
 3. **AI Integration — zero-shot baseline** — deploy YOLOv8 (Ultralytics, CUDA) with COCO-pretrained weights; evaluate via IoU/mAP (COCO protocol).
 4. **Optional fine-tuning** — only if zero-shot underperforms: Roboflow-labeled custom dataset → Kaggle Tesla T4 fine-tune → redeploy on RTX 3050 → re-evaluate on the same test set.
-5. **Toolpath generation** — raster (boustrophedon) scan per region, calibrated to mm, 10–20% pass overlap.
+5. **Toolpath generation** — mask polygon mapped into the calibrated mm frame (Step 2); non-paintable regions (doors/windows/obstacles) geometrically subtracted from the paintable polygon so rows skip over them; raster (boustrophedon) scan per region, 10–20% pass overlap; output serialized to G-code-style travel/paint commands for Step 8. **Manuscript synced 2026-08-02** — see [[📐 Path Planning & G-code Generation]] for the implementation spec (handed to Claude Code, in development).
 6. **Color recommendation module** — harmony-rule-based (+ optional deep-learning) palette generation; evaluated by the participant group.
 7. **Arduino firmware** — GRBL-compatible command set (`G1`, `G28`, `M3`/`M5`, `G4`) → step/direction pulses + relay control; tested standalone before integration.
 8. **pyserial bridge** — 115200 baud, blocking handshake (`ok` per line); one retry on timeout, then halt + spray-off on second failure.
