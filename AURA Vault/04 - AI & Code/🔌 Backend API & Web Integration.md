@@ -36,6 +36,7 @@ Verified environment: Python 3.11.5 · torch 2.5.1+cu121 · torchvision 0.20.1+c
 | `/api/status` | GET | Model / camera / CUDA state — drives the dashboard cards |
 | `/api/capture` | GET | One segmented still off the webcam |
 | `/api/recommend-colors` | POST | Room-derived wall palette — see [[🎨 Color Recommendation Module]] |
+| `/api/toolpath` | POST | Multipart image → mm-space serpentine paint path + G-code. Optional `corners` / `wall_corners` form fields switch it from the uncalibrated fallback to a real homography — see [[📐 Path Planning & G-code Generation]] |
 
 **Overlay modes** map to the painting stages: `pre` = raw frame, `during` = paintable wall only (green `#22C55E`), `post` = wall plus non-paintable regions (amber `#EAB308`).
 
@@ -96,7 +97,7 @@ Four orphaned `app.py` processes from an earlier session were still bound to por
 | Page | Uses |
 |---|---|
 | `color-recommendation.html` | `POST /api/segment` on upload · `POST /api/recommend-colors` for the palette · `GET /api/capture` for the camera button · wall polygons clip the colour preview |
-| `camera-view.html` | `GET /api/stream?overlay=…` live · `POST /api/segment` per overlay for uploaded stills |
+| `camera-view.html` | `GET /api/stream?overlay=…` live · `POST /api/segment` per overlay for uploaded stills · `POST /api/toolpath` in the **Toolpath** tab — canvas render of the path, coverage tiles, G-code listing + download, and click-to-pick corner calibration |
 | `dashboard.html` | `GET /api/status` every 3 s → robot / camera / CUDA cards |
 | `results.html` | Static — real v2 metrics and the six segmentation outputs |
 
@@ -114,12 +115,13 @@ The custom colour wheel is drawn on a `<canvas>` rather than loaded from a CDN (
 ## Known limits
 
 - **Recorded video** playback still uses placeholder SVG overlays — there is no per-frame video segmentation endpoint.
-- **Gantry control is not connected.** The dashboard's "Painting Progress" card is inert; the serial link in [[🖥️ Serial Communication Protocol]] is not wired to the API yet.
+- **Gantry control is not connected.** The dashboard's "Painting Progress" card is inert; the serial link in [[🖥️ Serial Communication Protocol]] is not wired to the API yet. `/api/toolpath` plans the path and emits G-code, but nothing sends it.
+- **Toolpath calibration defaults to the uncalibrated fallback.** Corner markers must be clicked by hand in the Toolpath tab (or posted as `corners`); nothing detects them in the frame automatically, so millimetre figures are scale assumptions until they are supplied.
 - The API is **localhost-only and unauthenticated** — appropriate for a local demo, not for exposure on a network.
-- Test-result images used in the gallery are already-annotated exports, so they are **not valid inputs** for the colour recommender (it samples the burnt-in annotation colour, not the room).
+- Test-result images used in the gallery are already-annotated exports, so they are **not valid inputs** for the colour recommender (it samples the burnt-in annotation colour, not the room) — **nor for the toolpath**, where they score the segmentation model against its own output. Real photographs belong in `samples/` (see `samples/README.md`); `backend/tools/test_toolpath.py` reads there first and prints a **NOT A PHOTOGRAPH** banner if it has to fall back to `website/assets/`. **Hold the `samples/` set out of Roboflow training**, or IoU measures memorisation.
 
 ## Next steps
 
 - [ ] Wire `pyserial` motion commands behind an `/api/paint` endpoint once the gantry runs
-- [ ] Feed mask polygons into [[📐 Path Planning & G-code Generation]] to close the segmentation → toolpath gap
+- [x] Feed mask polygons into [[📐 Path Planning & G-code Generation]] to close the segmentation → toolpath gap — done 2026-08-03 via `/api/toolpath`
 - [ ] Re-run and re-record metrics after the ~1,000-image training run

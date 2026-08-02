@@ -69,5 +69,13 @@ tqdm==4.68.3
 psutil==7.2.2
 matplotlib==3.11.0
 
+# --- Path planning / toolpath geometry --------------------------------------
+# Polygon boolean ops + scan-line intersection for toolpath_generator.py.
+# None of the risks above apply to it: it has no torch/CUDA coupling at all,
+# and the wheel bundles its own GEOS rather than linking anything in this file.
+# The one thing it does share is numpy — shapely 2.x is built against the
+# numpy 2 ABI pinned above, so it moves with numpy, not with torch.
+shapely==2.1.2
+
 # --- Robot serial link (used by the path-planning stage, not the API) -------
 pyserial==3.5

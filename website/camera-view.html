@@ -21,6 +21,7 @@
       <div class="mode-tabs">
         <button class="btn btn-secondary is-active" id="mode-live">Live Feed</button>
         <button class="btn btn-secondary" id="mode-upload">Upload / Playback</button>
+        <button class="btn btn-secondary" id="mode-toolpath">Toolpath</button>
       </div>
 
       <!-- Live Feed Mode -->
@@ -102,6 +103,121 @@
           <p class="demo-note" id="upload-meta"></p>
         </div>
       </section>
+
+      <!-- Toolpath Mode -->
+      <section id="toolpath-mode" class="section" style="padding-top: 0; display: none;">
+        <div class="notice-banner" style="margin-bottom: 20px;">
+          <span>⚠️</span>
+          <span id="toolpath-calibration-note">
+            Uncalibrated preview — the gantry and its corner markers do not exist yet, so
+            the frame is assumed to be filled edge-to-edge by a wall of the configured size.
+            Every millimetre figure below is a scale assumption, not a measurement.
+          </span>
+        </div>
+
+        <div class="card">
+          <div id="toolpath-prompt">
+            <p class="status-label" style="margin-bottom: 14px;">
+              Upload a still frame to plan the spray path over it
+            </p>
+            <input type="file" id="toolpath-input" accept="image/*" />
+          </div>
+
+          <div class="inference-status" id="toolpath-status" style="display: none;">
+            <span class="pulse-dot" id="toolpath-status-dot"></span>
+            <span id="toolpath-status-text"></span>
+          </div>
+
+          <div class="toolpath-panel" id="toolpath-panel" style="display: none; margin-top: 18px;">
+            <canvas id="toolpath-canvas" width="960" height="960"></canvas>
+          </div>
+
+          <p class="pick-hint" id="tp-pick-hint" style="display: none;"></p>
+
+          <div class="overlay-legend" id="toolpath-legend" style="display: none;">
+            <span><span class="swatch-dot" style="background:#22C55E;"></span>Paint pass — spray on (G1)</span>
+            <span><span class="swatch-dot" style="background:#F43F5E;"></span>Travel move — spray off (G0)</span>
+            <span><span class="swatch-dot" style="background:#EAB308;"></span>Non-paintable region — routed around</span>
+          </div>
+
+          <p class="demo-note" id="toolpath-meta"></p>
+
+          <!-- Corner-marker calibration. The four clicked points are image
+               pixels; the envelope size below says where those same points sit
+               in the gantry's own coordinate frame, which is what makes the
+               resulting G-code directly executable. -->
+          <div class="calibration-block" id="toolpath-calibration" style="display: none;">
+            <h4>Corner-marker calibration</h4>
+            <p class="demo-note" style="margin-top: 0;">
+              Mark the four corners of the gantry's reachable working area on the wall, then
+              click them here in order. Their millimetre positions are taken from the envelope
+              size below, so the plan comes out in the machine's own coordinate frame rather
+              than an arbitrary one.
+            </p>
+
+            <div class="field-row">
+              <label for="tp-envelope-w">Envelope width (mm)</label>
+              <input type="number" id="tp-envelope-w" value="1000" min="1" step="10" />
+              <label for="tp-envelope-h">Envelope height (mm)</label>
+              <input type="number" id="tp-envelope-h" value="1000" min="1" step="10" />
+            </div>
+
+            <div class="btn-row" style="margin-top: 14px;">
+              <button class="btn btn-secondary" id="tp-pick" type="button">Pick corners</button>
+              <button class="btn btn-secondary" id="tp-clear" type="button" disabled>Clear</button>
+              <button class="btn btn-primary" id="tp-replan" type="button" disabled>Plan with these corners</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid grid-4" id="toolpath-metrics" style="margin-top: 20px; display: none;">
+          <div class="card metric-card">
+            <p class="metric-label">Rows Painted</p>
+            <p class="metric-value" id="tp-rows">—</p>
+            <p class="metric-note" style="font-style: normal;" id="tp-rows-note">Scan rows containing paint</p>
+          </div>
+          <div class="card metric-card">
+            <p class="metric-label">Paintable Area</p>
+            <p class="metric-value" id="tp-area">—</p>
+            <p class="metric-note" style="font-style: normal;">After subtracting obstacles</p>
+          </div>
+          <div class="card metric-card">
+            <p class="metric-label">Paint Travel</p>
+            <p class="metric-value" id="tp-paint">—</p>
+            <p class="metric-note" style="font-style: normal;">Distance with the spray on</p>
+          </div>
+          <div class="card metric-card">
+            <p class="metric-label">Dry Travel</p>
+            <p class="metric-value" id="tp-travel">—</p>
+            <p class="metric-note" style="font-style: normal;" id="tp-efficiency">Repositioning, spray off</p>
+          </div>
+        </div>
+
+        <!-- Shown only when the wall overruns the gantry's reach. Not an error:
+             the X rail is shorter than most walls by design, so this is the
+             prompt to reposition and run the next section. -->
+        <div class="notice-banner" id="tp-clip-notice" style="margin-top: 20px; display: none;">
+          <span>↔️</span>
+          <span id="tp-clip-text"></span>
+        </div>
+
+        <div class="card" id="toolpath-gcode-card" style="margin-top: 20px; display: none;">
+          <div class="btn-row" style="justify-content: space-between; align-items: center;">
+            <h3 style="margin: 0;">Generated G-code</h3>
+            <button class="btn btn-secondary" id="tp-download" type="button">Download .gcode</button>
+          </div>
+          <p class="demo-note" style="margin-top: 8px;">
+            GRBL-compatible subset — <code>G0</code> rapid (dry), <code>G1</code> paint move,
+            <code>M3</code>/<code>M5</code> spray on/off. No feed rate is emitted: motion tuning
+            happens against the built rig, and a value invented here would become the one the
+            machine runs at.
+          </p>
+          <details class="gcode-details">
+            <summary id="tp-gcode-summary">Show program</summary>
+            <pre class="gcode-listing" id="tp-gcode" tabindex="0"></pre>
+          </details>
+        </div>
+      </section>
     </div>
   </main>
 
@@ -112,8 +228,16 @@
     (function () {
       var modeLiveBtn = document.getElementById("mode-live");
       var modeUploadBtn = document.getElementById("mode-upload");
+      var modeToolpathBtn = document.getElementById("mode-toolpath");
       var liveMode = document.getElementById("live-mode");
       var uploadMode = document.getElementById("upload-mode");
+      var toolpathMode = document.getElementById("toolpath-mode");
+
+      var MODES = {
+        live: { btn: modeLiveBtn, section: liveMode },
+        upload: { btn: modeUploadBtn, section: uploadMode },
+        toolpath: { btn: modeToolpathBtn, section: toolpathMode }
+      };
 
       /* ================================================================== */
       /* Live feed — MJPEG stream from GET /api/stream?overlay=...          */
@@ -173,20 +297,26 @@
           "Cannot reach the camera stream. Is the backend running (python backend/app.py)?";
       });
 
-      modeLiveBtn.addEventListener("click", function () {
-        modeLiveBtn.classList.add("is-active");
-        modeUploadBtn.classList.remove("is-active");
-        liveMode.style.display = "block";
-        uploadMode.style.display = "none";
-        startStream(liveOverlay);
-      });
+      /* Only the live view may hold the webcam open — the backend keeps the
+         device locked for as long as a stream connection exists, so every
+         other mode has to tear it down on the way in. */
+      function setMode(name) {
+        Object.keys(MODES).forEach(function (key) {
+          MODES[key].btn.classList.toggle("is-active", key === name);
+          MODES[key].section.style.display = key === name ? "block" : "none";
+        });
 
-      modeUploadBtn.addEventListener("click", function () {
-        modeUploadBtn.classList.add("is-active");
-        modeLiveBtn.classList.remove("is-active");
-        uploadMode.style.display = "block";
-        liveMode.style.display = "none";
-        stopStream();
+        if (name === "live") {
+          startStream(liveOverlay);
+        } else {
+          stopStream();
+        }
+      }
+
+      Object.keys(MODES).forEach(function (key) {
+        MODES[key].btn.addEventListener("click", function () {
+          setMode(key);
+        });
       });
 
       document
@@ -381,6 +511,551 @@
         requestOverlay(overlay).then(function (src) {
           if (src) frame.src = src;
         });
+      });
+
+      /* ================================================================== */
+      /* Toolpath — stills go through POST /api/toolpath                    */
+      /*                                                                    */
+      /* The response carries the plan twice: `gcode` for the machine and   */
+      /* `events` as geometry, which is what gets drawn here. Rendering from */
+      /* the events avoids writing a G-code parser in the browser just to    */
+      /* recover coordinates the backend already had.                        */
+      /* ================================================================== */
+
+      var toolpathInput = document.getElementById("toolpath-input");
+      var toolpathPanel = document.getElementById("toolpath-panel");
+      var toolpathLegend = document.getElementById("toolpath-legend");
+      var toolpathMetrics = document.getElementById("toolpath-metrics");
+      var toolpathStatus = document.getElementById("toolpath-status");
+      var toolpathStatusText = document.getElementById("toolpath-status-text");
+      var toolpathStatusDot = document.getElementById("toolpath-status-dot");
+      var toolpathMeta = document.getElementById("toolpath-meta");
+      var toolpathNote = document.getElementById("toolpath-calibration-note");
+      var gcodeCard = document.getElementById("toolpath-gcode-card");
+      var gcodeEl = document.getElementById("tp-gcode");
+      var gcodeSummary = document.getElementById("tp-gcode-summary");
+      var downloadBtn = document.getElementById("tp-download");
+      var canvas = document.getElementById("toolpath-canvas");
+      var calibrationBlock = document.getElementById("toolpath-calibration");
+      var clipNotice = document.getElementById("tp-clip-notice");
+      var clipText = document.getElementById("tp-clip-text");
+      var pickHint = document.getElementById("tp-pick-hint");
+      var pickBtn = document.getElementById("tp-pick");
+      var clearBtn = document.getElementById("tp-clear");
+      var replanBtn = document.getElementById("tp-replan");
+      var envelopeW = document.getElementById("tp-envelope-w");
+      var envelopeH = document.getElementById("tp-envelope-h");
+
+      var COLOR_PAINT = "#22C55E";
+      var COLOR_TRAVEL = "#F43F5E";
+      var COLOR_OBSTACLE = "#EAB308";
+
+      // Backing-store width. The canvas is scaled to the container by CSS, so
+      // this only sets render sharpness; the height follows the wall's aspect.
+      var CANVAS_WIDTH = 1200;
+
+      // Must match CORNER_LABELS in backend/coordinate_mapping.py — the backend
+      // rejects any other ordering, and its error message names these.
+      var CORNER_LABELS = ["top-left", "top-right", "bottom-right", "bottom-left"];
+
+      var lastToolpath = null;
+      var lastFileName = "";
+      var sourceFile = null;
+      var sourceImage = null;    // decoded frame, reused across re-plans
+      var pickedCorners = [];    // [[x_px, y_px], ...] in the SOURCE image's pixels
+      var pickMode = false;
+
+      function setToolpathStatus(message, state) {
+        if (!message) {
+          toolpathStatus.style.display = "none";
+          return;
+        }
+        toolpathStatus.style.display = "flex";
+        toolpathStatusText.textContent = message;
+        toolpathStatusDot.style.display = state === "busy" ? "inline-block" : "none";
+        toolpathStatus.className = "inference-status" + (state === "error" ? " is-error" : "");
+      }
+
+      /* ---------------------------------------------------------------- */
+      /* Perspective rectification                                         */
+      /*                                                                   */
+      /* Under a homography the photo and the plan live in different       */
+      /* spaces, so the frame cannot just be stretched into the wall       */
+      /* rectangle behind the path. Instead each output pixel is walked    */
+      /* BACK through the inverse transform to find the source pixel it    */
+      /* came from, which produces the flattened, front-on view of the     */
+      /* wall that the millimetre coordinates actually describe. Seeing    */
+      /* that rectified image is also how you catch a mis-clicked corner:  */
+      /* a bad pick comes out visibly skewed.                              */
+      /* ---------------------------------------------------------------- */
+
+      function invert3x3(m) {
+        var a = m[0][0], b = m[0][1], c = m[0][2];
+        var d = m[1][0], e = m[1][1], f = m[1][2];
+        var g = m[2][0], h = m[2][1], i = m[2][2];
+
+        var det = a * (e * i - f * h) - b * (d * i - f * g) + c * (d * h - e * g);
+        if (!det) return null;
+
+        return [
+          [(e * i - f * h) / det, (c * h - b * i) / det, (b * f - c * e) / det],
+          [(f * g - d * i) / det, (a * i - c * g) / det, (c * d - a * f) / det],
+          [(d * h - e * g) / det, (b * g - a * h) / det, (a * e - b * d) / det]
+        ];
+      }
+
+      /** Warp the frame into wall space. Returns a canvas, or null if it can't. */
+      function rectify(image, matrix, wall, outW, outH) {
+        var inverse = invert3x3(matrix); // mm -> normalized image
+        if (!inverse) return null;
+
+        var src = document.createElement("canvas");
+        src.width = image.naturalWidth;
+        src.height = image.naturalHeight;
+        src.getContext("2d").drawImage(image, 0, 0);
+
+        var source;
+        try {
+          source = src.getContext("2d").getImageData(0, 0, src.width, src.height).data;
+        } catch (e) {
+          // Tainted canvas — can happen for a file:// page depending on the
+          // browser. Not worth breaking the view over; the path still draws.
+          return null;
+        }
+
+        var out = document.createElement("canvas");
+        out.width = outW;
+        out.height = outH;
+        var outCtx = out.getContext("2d");
+        var target = outCtx.createImageData(outW, outH);
+        var pixels = target.data;
+
+        for (var y = 0; y < outH; y++) {
+          var mmY = ((y + 0.5) / outH) * wall.h;
+          for (var x = 0; x < outW; x++) {
+            var mmX = ((x + 0.5) / outW) * wall.w;
+
+            var w = inverse[2][0] * mmX + inverse[2][1] * mmY + inverse[2][2];
+            if (!w) continue;
+
+            var nx = (inverse[0][0] * mmX + inverse[0][1] * mmY + inverse[0][2]) / w;
+            var ny = (inverse[1][0] * mmX + inverse[1][1] * mmY + inverse[1][2]) / w;
+            if (nx < 0 || nx >= 1 || ny < 0 || ny >= 1) continue; // outside the frame
+
+            var si = (((ny * src.height) | 0) * src.width + ((nx * src.width) | 0)) * 4;
+            var oi = (y * outW + x) * 4;
+            pixels[oi] = source[si];
+            pixels[oi + 1] = source[si + 1];
+            pixels[oi + 2] = source[si + 2];
+            pixels[oi + 3] = 255;
+          }
+        }
+
+        outCtx.putImageData(target, 0, 0);
+        return out;
+      }
+
+      /** Wall extent in mm, read off the calibration's destination rectangle. */
+      function wallSize(calibration) {
+        var corners = calibration && calibration.wall_corners_mm;
+        if (!corners || !corners.length) return { w: 1000, h: 1000 };
+
+        var xs = corners.map(function (p) { return p[0]; });
+        var ys = corners.map(function (p) { return p[1]; });
+        var w = Math.max.apply(null, xs) - Math.min.apply(null, xs);
+        var h = Math.max.apply(null, ys) - Math.min.apply(null, ys);
+        return { w: w > 0 ? w : 1000, h: h > 0 ? h : 1000 };
+      }
+
+      function drawToolpath(data, image) {
+        var wall = wallSize(data.calibration);
+        var ctx = canvas.getContext("2d");
+
+        canvas.width = CANVAS_WIDTH;
+        canvas.height = Math.max(1, Math.round(CANVAS_WIDTH * (wall.h / wall.w)));
+
+        var sx = canvas.width / wall.w;
+        var sy = canvas.height / wall.h;
+
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = "#081120";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        /* The uncalibrated transform just stretches the whole frame onto the
+           wall rectangle, so the raw image can be drawn flat. A homography
+           needs the frame warped into wall space first. */
+        if (image) {
+          var background = image;
+          if (data.calibration_mode === "homography") {
+            background = rectify(
+              image, data.calibration.matrix, wall, canvas.width, canvas.height
+            );
+          }
+
+          if (background) {
+            ctx.globalAlpha = 0.9;
+            ctx.drawImage(background, 0, 0, canvas.width, canvas.height);
+            ctx.globalAlpha = 1;
+            // Light wash only — enough to keep the green legible over a bright
+            // wall, not so much that the frame stops being recognisable. The
+            // point of the view is seeing the path against the actual room.
+            ctx.fillStyle = "rgba(10, 22, 40, 0.15)";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+          }
+        }
+
+        // Obstacles first, underneath the path that avoids them.
+        var obstacles = data.obstacle_polygons_mm || [];
+        ctx.strokeStyle = COLOR_OBSTACLE;
+        ctx.fillStyle = "rgba(234, 179, 8, 0.14)";
+        ctx.lineWidth = 2;
+        ctx.setLineDash([5, 4]);
+        obstacles.forEach(function (polygon) {
+          if (!polygon || polygon.length < 3) return;
+          ctx.beginPath();
+          polygon.forEach(function (point, i) {
+            var x = point[0] * sx;
+            var y = point[1] * sy;
+            if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+          });
+          ctx.closePath();
+          ctx.fill();
+          ctx.stroke();
+        });
+
+        var events = data.events || [];
+
+        // Travel moves under the paint passes.
+        ctx.setLineDash([6, 5]);
+        ctx.strokeStyle = COLOR_TRAVEL;
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        events.forEach(function (ev) {
+          if (ev.type !== "travel") return;
+          ctx.moveTo(ev.from[0] * sx, ev.from[1] * sy);
+          ctx.lineTo(ev.to[0] * sx, ev.to[1] * sy);
+        });
+        ctx.stroke();
+
+        ctx.setLineDash([]);
+        ctx.strokeStyle = COLOR_PAINT;
+        ctx.lineWidth = 2.5;
+        ctx.lineCap = "round";
+        ctx.beginPath();
+        events.forEach(function (ev) {
+          if (ev.type !== "paint") return;
+          ctx.moveTo(ev.from[0] * sx, ev.from[1] * sy);
+          ctx.lineTo(ev.to[0] * sx, ev.to[1] * sy);
+        });
+        ctx.stroke();
+      }
+
+      function renderMetrics(data) {
+        var totalLength = data.total_paint_length_mm + data.total_travel_length_mm;
+        var efficiency = totalLength ? (100 * data.total_paint_length_mm / totalLength) : 0;
+
+        document.getElementById("tp-rows").textContent = data.row_count;
+        document.getElementById("tp-rows-note").textContent =
+          data.step_over_mm.toFixed(1) + " mm step-over";
+        document.getElementById("tp-area").textContent =
+          (data.paintable_area_mm2 / 1000000).toFixed(3) + " m²";
+        document.getElementById("tp-paint").textContent =
+          (data.total_paint_length_mm / 1000).toFixed(1) + " m";
+        document.getElementById("tp-travel").textContent =
+          (data.total_travel_length_mm / 1000).toFixed(1) + " m";
+        document.getElementById("tp-efficiency").textContent =
+          efficiency.toFixed(1) + "% of motion is spraying";
+
+        if (data.was_clipped) {
+          var leftover = (data.clipped_area_mm2 / 1000000).toFixed(3);
+          clipNotice.style.display = "flex";
+          clipText.textContent =
+            data.clipped_pct.toFixed(1) + "% of this wall section (" + leftover +
+            " m²) is outside the gantry's current reach — reposition the gantry, " +
+            "re-calibrate, and run again to cover the rest. Reachable travel is " +
+            data.travel_envelope_mm[0] + " × " + data.travel_envelope_mm[1] +
+            " mm, less a " + data.travel_margin_mm + " mm homing margin at each end.";
+        } else {
+          clipNotice.style.display = "none";
+        }
+
+        gcodeEl.textContent = data.gcode.join("\n");
+        gcodeSummary.textContent = "Show program (" + data.gcode.length + " lines)";
+
+        if (data.calibration_mode === "homography") {
+          toolpathNote.textContent =
+            "Calibrated from corner markers — millimetre figures follow the measured " +
+            "envelope geometry, and the frame behind the path has been rectified into " +
+            "wall space. If that background looks skewed or stretched, a corner was " +
+            "mis-clicked: re-pick before trusting the numbers.";
+
+          /* The detected wall can extend past the four markers, and the
+             transform happily extrapolates out there — which produces
+             coordinates the gantry cannot reach. Nothing clips the path yet, so
+             say so rather than handing over G-code that would drive the machine
+             into its limits. */
+          var wall = wallSize(data.calibration);
+          var bounds = data.bounds_mm || [0, 0, 0, 0];
+          var slack = 0.5; // mm, ignore rounding at the edges
+
+          if (bounds[0] < -slack || bounds[1] < -slack ||
+              bounds[2] > wall.w + slack || bounds[3] > wall.h + slack) {
+            toolpathNote.textContent +=
+              " ⚠ This plan runs outside the envelope — bounds are [" +
+              bounds.join(", ") + "] mm against a 0,0 → " + wall.w + "," + wall.h +
+              " mm reachable area. The detected wall is larger than the markers " +
+              "enclose, so those moves are not executable. Re-pick corners around " +
+              "the whole wall, or treat the out-of-range moves as needing clipping " +
+              "before this is sent to the machine.";
+          }
+        } else {
+          toolpathNote.textContent =
+            "Uncalibrated preview — no corner markers, so the frame is assumed to be " +
+            "filled edge-to-edge by a wall of the configured size. Every millimetre " +
+            "figure below is a scale assumption, not a measurement.";
+        }
+      }
+
+      /* ---------------------------------------------------------------- */
+      /* Corner picking                                                    */
+      /* ---------------------------------------------------------------- */
+
+      /** Show the raw frame at its own aspect, with whatever has been picked. */
+      function drawPicker() {
+        if (!sourceImage) return;
+        var ctx = canvas.getContext("2d");
+
+        canvas.width = CANVAS_WIDTH;
+        canvas.height = Math.max(
+          1,
+          Math.round(CANVAS_WIDTH * (sourceImage.naturalHeight / sourceImage.naturalWidth))
+        );
+
+        ctx.drawImage(sourceImage, 0, 0, canvas.width, canvas.height);
+
+        var sx = canvas.width / sourceImage.naturalWidth;
+        var sy = canvas.height / sourceImage.naturalHeight;
+
+        if (pickedCorners.length > 1) {
+          ctx.strokeStyle = "#38BDF8";
+          ctx.lineWidth = 2;
+          ctx.setLineDash([6, 4]);
+          ctx.beginPath();
+          pickedCorners.forEach(function (point, i) {
+            var x = point[0] * sx;
+            var y = point[1] * sy;
+            if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+          });
+          if (pickedCorners.length === 4) ctx.closePath();
+          ctx.stroke();
+          ctx.setLineDash([]);
+        }
+
+        pickedCorners.forEach(function (point, i) {
+          var x = point[0] * sx;
+          var y = point[1] * sy;
+
+          ctx.beginPath();
+          ctx.arc(x, y, 11, 0, Math.PI * 2);
+          ctx.fillStyle = "#38BDF8";
+          ctx.fill();
+          ctx.strokeStyle = "#081120";
+          ctx.lineWidth = 2;
+          ctx.stroke();
+
+          ctx.fillStyle = "#081120";
+          ctx.font = "bold 15px sans-serif";
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillText(String(i + 1), x, y + 1);
+        });
+        ctx.textAlign = "start";
+        ctx.textBaseline = "alphabetic";
+      }
+
+      function updatePickUi() {
+        var count = pickedCorners.length;
+        clearBtn.disabled = count === 0;
+        replanBtn.disabled = count !== 4;
+
+        if (!pickMode) {
+          pickHint.style.display = "none";
+          return;
+        }
+
+        pickHint.style.display = "block";
+        pickHint.textContent = count < 4
+          ? "Click the " + CORNER_LABELS[count] + " corner marker (" + (count + 1) + " of 4)"
+          : "All 4 corners set — check the envelope size, then plan with these corners.";
+      }
+
+      function setPickMode(active) {
+        pickMode = active;
+        toolpathPanel.classList.toggle("is-picking", active);
+        pickBtn.textContent = active ? "Cancel picking" : "Pick corners";
+        if (active) drawPicker();
+        updatePickUi();
+      }
+
+      canvas.addEventListener("click", function (event) {
+        if (!pickMode || !sourceImage || pickedCorners.length >= 4) return;
+
+        // The canvas is scaled to the container by CSS, so go through the
+        // rendered box rather than the backing store to get the click fraction.
+        var rect = canvas.getBoundingClientRect();
+        if (!rect.width || !rect.height) return;
+
+        var fx = Math.min(1, Math.max(0, (event.clientX - rect.left) / rect.width));
+        var fy = Math.min(1, Math.max(0, (event.clientY - rect.top) / rect.height));
+
+        // Stored in SOURCE image pixels — that is what the API expects, and it
+        // stays correct regardless of how the canvas happens to be displayed.
+        pickedCorners.push([
+          +(fx * sourceImage.naturalWidth).toFixed(1),
+          +(fy * sourceImage.naturalHeight).toFixed(1)
+        ]);
+
+        drawPicker();
+        updatePickUi();
+      });
+
+      /* ---------------------------------------------------------------- */
+      /* Planning                                                          */
+      /* ---------------------------------------------------------------- */
+
+      /** Plan the path. Passing corners switches the backend to homography. */
+      function planToolpath(corners) {
+        if (!sourceFile) return;
+        setToolpathStatus("Segmenting and planning the spray path…", "busy");
+
+        var formData = new FormData();
+        formData.append("image", sourceFile);
+
+        if (corners && corners.length === 4) {
+          var wallW = Math.max(1, parseFloat(envelopeW.value) || 0);
+          var wallH = Math.max(1, parseFloat(envelopeH.value) || 0);
+
+          formData.append("corners", JSON.stringify(corners));
+          // The picked markers ARE the envelope corners, so their millimetre
+          // positions are the envelope rectangle, origin at its top-left.
+          formData.append("wall_corners", JSON.stringify([
+            [0, 0], [wallW, 0], [wallW, wallH], [0, wallH]
+          ]));
+        }
+
+        window.AURA.apiFetch("/api/toolpath", {
+          method: "POST",
+          body: formData,
+          timeoutMs: 60000
+        })
+          .then(function (data) {
+            if (!data.success) throw new Error(data.error || "Toolpath generation failed.");
+
+            lastToolpath = data;
+            toolpathPanel.style.display = "flex";
+            toolpathLegend.style.display = "flex";
+            toolpathMetrics.style.display = "grid";
+            calibrationBlock.style.display = "block";
+            gcodeCard.style.display = data.gcode.length ? "block" : "none";
+
+            // Picking is done once a plan comes back; the canvas goes back to
+            // showing the result rather than the target.
+            setPickMode(false);
+
+            renderMetrics(data);
+            drawToolpath(data, sourceImage);
+
+            if (!data.event_count) {
+              setToolpathStatus(
+                "No paintable region found in this frame — nothing to plan.",
+                "error"
+              );
+            } else {
+              setToolpathStatus(
+                data.row_count + " rows planned · " + data.event_count + " moves",
+                "ok"
+              );
+              setTimeout(function () { setToolpathStatus(null); }, 3500);
+            }
+
+            var bits = [
+              data.wall_polygon_count + " wall region(s), " +
+                data.obstacle_polygon_count + " non-paintable",
+              "inference " + data.inference_ms + " ms on " + data.device,
+              data.model
+            ];
+            if (data.using_fallback_model) {
+              bits.push("FALLBACK model, not the fine-tuned AURA weights");
+            }
+            toolpathMeta.textContent = bits.join(" · ");
+          })
+          .catch(function (err) {
+            setToolpathStatus(err.message, "error");
+            window.AURA.showToast(err.message);
+          });
+      }
+
+      toolpathInput.addEventListener("change", function () {
+        var file = toolpathInput.files && toolpathInput.files[0];
+        if (!file) return;
+
+        sourceFile = file;
+        lastFileName = file.name.replace(/\.[^.]+$/, "");
+        pickedCorners = [];
+        setPickMode(false);
+
+        // Decode the frame once and keep it: every later re-plan and every
+        // corner pick draws from this same image rather than re-reading the
+        // file, and the first plan waits for it so the background and the path
+        // land in one paint instead of the path flashing in first.
+        var url = URL.createObjectURL(file);
+        var image = new Image();
+
+        image.onload = function () {
+          sourceImage = image;
+          URL.revokeObjectURL(url);
+          planToolpath(null); // uncalibrated first pass
+        };
+        image.onerror = function () {
+          sourceImage = null;
+          URL.revokeObjectURL(url);
+          planToolpath(null);
+        };
+        image.src = url;
+      });
+
+      pickBtn.addEventListener("click", function () {
+        if (!sourceImage) return;
+        if (!pickMode) pickedCorners = [];
+        setPickMode(!pickMode);
+      });
+
+      clearBtn.addEventListener("click", function () {
+        pickedCorners = [];
+        if (pickMode) drawPicker();
+        updatePickUi();
+      });
+
+      replanBtn.addEventListener("click", function () {
+        if (pickedCorners.length !== 4) return;
+        planToolpath(pickedCorners);
+      });
+
+      downloadBtn.addEventListener("click", function () {
+        if (!lastToolpath || !lastToolpath.gcode.length) return;
+
+        // Trailing newline: some senders drop the final line without it.
+        var blob = new Blob([lastToolpath.gcode.join("\n") + "\n"], {
+          type: "text/plain"
+        });
+        var url = URL.createObjectURL(blob);
+        var link = document.createElement("a");
+        link.href = url;
+        link.download = "aura_" + (lastFileName || "toolpath") + ".gcode";
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        URL.revokeObjectURL(url);
       });
     })();
   </script>

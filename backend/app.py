@@ -17,6 +17,7 @@ endpoints — FastAPI's schema/validation upside doesn't pay for itself here.
 Endpoints
 ---------
 POST /api/segment   multipart image -> base64 original + masked overlay + detections
+POST /api/toolpath  multipart image -> mm-space serpentine paint path + G-code
 GET  /api/stream    MJPEG webcam stream, ?overlay=pre|during|post
 GET  /api/status    model / camera / CUDA status for the dashboard
 
@@ -27,6 +28,7 @@ Run:
 from __future__ import annotations
 
 import base64
+import json
 import logging
 import os
 import sys
@@ -41,12 +43,24 @@ from flask import Flask, Response, jsonify, request, send_from_directory
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from color_recommender import NEUTRAL_COLORS, recommend_colors  # noqa: E402
+from coordinate_mapping import (  # noqa: E402
+    WALL_HEIGHT_MM,
+    WALL_WIDTH_MM,
+    CalibrationError,
+    WallCalibration,
+)
 from model_loader import (  # noqa: E402
     PROJECT_ROOT,
     ModelLoadError,
     load_model,
     segmentation_model,
     torch_info,
+)
+from toolpath_generator import (  # noqa: E402
+    SoftLimitError,
+    ToolpathError,
+    events_to_gcode,
+    generate_toolpath,
 )
 
 # --------------------------------------------------------------------------- #
@@ -754,6 +768,166 @@ def api_recommend_colors():
 
 
 # --------------------------------------------------------------------------- #
+# API — POST /api/toolpath
+#
+# The stage between segmentation and the (not yet written) serial link: segment
+# the frame, map the wall polygons into millimetres, subtract the non-paintable
+# detections, raster-fill what is left, and hand back G-code.
+#
+# Calibration comes from the optional `corners` field. Without it the response
+# says calibration_mode="uncalibrated_scale" and every millimetre figure in it
+# is a scale assumption, not a measurement — the gantry does not exist yet, so
+# that is the normal case today.
+# --------------------------------------------------------------------------- #
+
+def parse_corner_field(name: str) -> list | None:
+    """Read an optional JSON corner array off the form/query string.
+
+    Returns None when absent. Raises ``CalibrationError`` on malformed JSON so
+    the caller answers 400 with the field name in the message.
+    """
+    raw = request.form.get(name) or request.args.get(name)
+    if raw is None or not raw.strip():
+        return None
+    try:
+        value = json.loads(raw)
+    except ValueError as exc:
+        raise CalibrationError(f"'{name}' is not valid JSON: {exc}") from exc
+    if not isinstance(value, list):
+        raise CalibrationError(
+            f"'{name}' must be a JSON array of 4 [x, y] pairs, got "
+            f"{type(value).__name__}."
+        )
+    return value
+
+
+def calibration_from_request(width: int, height: int) -> WallCalibration:
+    """Build the image->wall transform for this request.
+
+    ``corners``      — 4 marker positions in image pixels (TL, TR, BR, BL).
+    ``wall_corners`` — their measured positions on the wall in mm, same order.
+                       Optional: defaults to the AURA_WALL_*_MM rectangle, i.e.
+                       "those markers are the corners of a wall of the
+                       configured size".
+
+    With no ``corners`` at all this falls back to the uncalibrated scale.
+    """
+    image_corners = parse_corner_field("corners")
+    if image_corners is None:
+        return WallCalibration.uncalibrated(width, height, WALL_WIDTH_MM, WALL_HEIGHT_MM)
+
+    wall_corners = parse_corner_field("wall_corners") or [
+        [0.0, 0.0],
+        [WALL_WIDTH_MM, 0.0],
+        [WALL_WIDTH_MM, WALL_HEIGHT_MM],
+        [0.0, WALL_HEIGHT_MM],
+    ]
+    return WallCalibration.from_corner_markers(image_corners, wall_corners, width, height)
+
+
+@app.route("/api/toolpath", methods=["POST"])
+def api_toolpath():
+    if not segmentation_model.is_loaded:
+        return model_unavailable()
+
+    frame, error = frame_from_request()
+    if error is not None:
+        return error
+
+    height, width = frame.shape[:2]
+    try:
+        calibration = calibration_from_request(width, height)
+    except CalibrationError as exc:
+        return jsonify({"success": False, "error": str(exc)}), 400
+
+    try:
+        # overlay="pre" — the masks are what we need; skip the drawing work.
+        result = run_inference(frame, "pre", source="toolpath")
+
+        wall_polygons = [
+            calibration.polygon_to_mm(det["polygon"])
+            for det in result["detections"]
+            if det["is_wall"] and det["polygon"]
+        ]
+        obstacle_polygons = [
+            calibration.polygon_to_mm(det["polygon"])
+            for det in result["detections"]
+            if not det["is_wall"] and det["polygon"]
+        ]
+
+        toolpath = generate_toolpath(wall_polygons, obstacle_polygons)
+        gcode = events_to_gcode(toolpath["events"])
+    except ModelLoadError as exc:
+        return jsonify({"success": False, "model_loaded": False, "error": str(exc)}), 503
+    except ToolpathError as exc:
+        # Missing geometry dependency — the server cannot do this at all, which
+        # is the same class of problem as missing weights.
+        logger.error("Toolpath generation unavailable: %s", exc)
+        return jsonify({"success": False, "error": str(exc)}), 503
+    except CalibrationError as exc:
+        return jsonify({"success": False, "error": str(exc)}), 400
+    except SoftLimitError as exc:
+        # Clipping should have removed every unreachable move, so reaching here
+        # means a bug upstream, not bad user input. Surfaced verbatim rather
+        # than folded into the generic 500 so it is obvious in the logs.
+        logger.error("Soft-limit violation while serializing G-code: %s", exc)
+        return jsonify({"success": False, "error": str(exc)}), 500
+    except Exception as exc:
+        logger.exception("Toolpath generation failed")
+        return jsonify({"success": False, "error": f"{type(exc).__name__}: {exc}"}), 500
+
+    payload = {
+        "success": True,
+        "model_loaded": True,
+        # --- calibration ---
+        "calibration_mode": calibration.calibration_mode,
+        # Returned so a caller can store the solved transform and reuse it until
+        # the camera or the workpiece moves. Nothing persists it server-side.
+        "calibration": calibration.to_dict(),
+        # --- what was found ---
+        "wall_detected": result["wall_detected"],
+        "wall_confidence": result["wall_confidence"],
+        "wall_polygon_count": len(wall_polygons),
+        "obstacle_polygon_count": len(obstacle_polygons),
+        # The subtracted regions, in mm. Returned so a viewer can show what the
+        # path routed around — the claim is only checkable if you can see the
+        # obstacles next to the path that avoids them.
+        "obstacle_polygons_mm": [
+            [[round(x, 2), round(y, 2)] for x, y in polygon]
+            for polygon in obstacle_polygons
+        ],
+        # --- reach ---
+        # The X rail is shorter than most walls on purpose, so a wall that does
+        # not fit is the normal case: the plan covers this gantry position and
+        # `clipped_*` says how much is left for the next one.
+        "was_clipped": toolpath["was_clipped"],
+        "clipped_area_mm2": toolpath["clipped_area_mm2"],
+        "clipped_pct": toolpath["clipped_pct"],
+        "travel_envelope_mm": toolpath["travel_envelope_mm"],
+        "travel_margin_mm": toolpath["travel_margin_mm"],
+        # --- the plan ---
+        "paintable_area_mm2": toolpath["paintable_area_mm2"],
+        "row_count": toolpath["row_count"],
+        "step_over_mm": toolpath["step_over_mm"],
+        "total_paint_length_mm": toolpath["total_paint_length_mm"],
+        "total_travel_length_mm": toolpath["total_travel_length_mm"],
+        "bounds_mm": toolpath["bounds_mm"],
+        # Both representations ship: `gcode` is what the machine will consume,
+        # `events` is the same plan as geometry so the website can draw it on a
+        # canvas without writing a G-code parser in JavaScript.
+        "events": toolpath["events"],
+        "gcode": gcode,
+        "event_count": len(toolpath["events"]),
+        # --- context ---
+        "inference_ms": result["inference_ms"],
+        "device": segmentation_model.device,
+        "model": os.path.basename(segmentation_model.model_path),
+        "using_fallback_model": segmentation_model.using_fallback,
+    }
+    return jsonify(payload)
+
+
+# --------------------------------------------------------------------------- #
 # API — GET /api/stream  (MJPEG)
 # --------------------------------------------------------------------------- #
 
@@ -970,6 +1144,7 @@ def startup_report() -> None:
     print("  Endpoints     : POST /api/segment   GET /api/stream?overlay=pre|during|post")
     print("                  GET  /api/status    GET /api/capture")
     print("                  POST /api/recommend-colors")
+    print("                  POST /api/toolpath")
     print(f"  CORS          : enabled for all origins (file:// pages included)")
     print(line)
     print()

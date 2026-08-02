@@ -30,6 +30,7 @@
 
 html {
   scroll-behavior: smooth;
+  font-size: 110%;
 }
 
 body {
@@ -1084,6 +1085,118 @@ main {
   text-align: right;
   font-variant-numeric: tabular-nums;
   color: var(--text-secondary);
+}
+
+/* ---------------------------------------------------------------------- */
+/* Toolpath preview (camera-view.html, POST /api/toolpath)                  */
+/* ---------------------------------------------------------------------- */
+
+/* Deliberately not .video-panel: that forces 16/9 and object-fit:cover,
+   which would crop the plan. The canvas carries the wall's own aspect ratio
+   in its width/height attributes and scales down to fit. */
+.toolpath-panel {
+  border-radius: var(--radius);
+  border: 1px solid var(--panel-border);
+  background: #081120;
+  padding: 10px;
+  display: flex;
+  justify-content: center;
+}
+
+.toolpath-panel canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-width: 100%;
+  border-radius: 6px;
+}
+
+.gcode-listing {
+  max-height: 300px;
+  overflow: auto;
+  margin: 12px 0 0;
+  padding: 14px 16px;
+  background: #081120;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: var(--radius);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.78rem;
+  line-height: 1.5;
+  color: var(--text-secondary);
+  white-space: pre;
+}
+
+.gcode-details > summary {
+  cursor: pointer;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  padding: 6px 0;
+  user-select: none;
+}
+
+.gcode-details > summary:hover {
+  color: var(--text);
+}
+
+/* While picking corner markers the canvas is a target, not a picture. */
+.toolpath-panel.is-picking canvas {
+  cursor: crosshair;
+}
+
+.pick-hint {
+  margin: 12px 0 0;
+  padding: 10px 14px;
+  border-radius: var(--radius);
+  background: var(--amber-bg);
+  border: 1px solid var(--amber-border);
+  color: #FCD34D;
+  font-size: 0.92rem;
+  font-weight: 600;
+}
+
+.calibration-block {
+  margin-top: 20px;
+  padding-top: 18px;
+  border-top: 1px solid rgba(148, 163, 184, 0.15);
+}
+
+.calibration-block h4 {
+  margin: 0 0 6px;
+  font-size: 1.15rem;
+}
+
+.field-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  align-items: center;
+  margin-top: 14px;
+}
+
+.field-row label {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}
+
+.field-row input[type="number"] {
+  width: 110px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--panel-border);
+  background: #081120;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 0.95rem;
+}
+
+.field-row input[type="number"]:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 
 /* ---------------------------------------------------------------------- */

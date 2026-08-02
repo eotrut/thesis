@@ -15,6 +15,11 @@ status: active
 
 ---
 
+> [!important] 📌 [[📌 Next Session — Read First]] — pending as of 2026-08-03
+> Delete that note and this banner once it has been read.
+
+---
+
 ## 📊 Status Panel
 
 | Field | Value |

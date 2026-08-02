@@ -36,14 +36,17 @@ steps_per_mm = (motor_steps_per_rev * microstep) / (pulley_teeth * belt_pitch)
              = (200 * 8) / (20 * 2) = 40 steps/mm
 ```
 
-## Estimated Travel Range
-| Axis | Range (prototype) | Notes |
-|---|---|---|
-| X | up to ~2–4 m (frame-dependent) | prototype demo target: 1 m usable |
-| Y | up to ~2.5–3 m | prototype demo target: 1 m usable |
-| Z | fixed ~150 mm standoff | no active Z |
+## Travel Range — Locked (2026-08-03)
+| Axis | Rail length | mm | Notes |
+|---|---|---|---|
+| X (horizontal) | 4.5 ft | 1371.6 mm | full wall width covered by **repositioning the gantry**, not a longer rail |
+| Y (vertical) | 9 ft | 2743.2 mm | |
+| Z | fixed ~150 mm standoff | | no active Z |
 
-> Prototype demo works on a **1 m × 1 m** flat board — the frame can be built larger later.
+> [!info] Multi-position painting is the plan, not a fallback
+> The frame's X-axis is intentionally shorter than most wall widths. For any wall wider than 4.5 ft, the gantry is physically slid over and re-calibrated (new corner markers) to paint the next section — each `/api/toolpath` run covers exactly one gantry position. This is why **envelope clipping** (clip the toolpath to what this position can actually reach, report the leftover area) is the correct software behavior rather than an edge case — see [[📐 Path Planning & G-code Generation]] § Envelope Clipping.
+
+> The actual reachable envelope for toolpath clipping is the rail length **minus a safety margin** for homing/limit-switch clearance (placeholder: 50 mm per end until measured on the built frame) — not the full 1371.6 × 2743.2 mm rail length.
 
 ## Carriage & Spray Head Mounting
 A printed/bracketed mount fixes the nozzle to the Y carriage, aimed perpendicular to the wall at the ~150mm standoff. Tubing to the pump/reservoir is routed with a small drag chain or zip-tie loops to avoid snagging during motion.

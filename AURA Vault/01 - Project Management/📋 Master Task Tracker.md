@@ -35,7 +35,7 @@ status: active
 
 ## Phase 2 — Firmware & Motion Control
 - [ ] Flash Arduino with GRBL or custom firmware
-- [ ] Define G-code command set
+- [x] Define G-code command set — `G0` rapid (dry), `G1` paint move, `M3`/`M5` spray on/off, absolute mm at 2 dp. Emitted by `events_to_gcode()`, documented in [[📐 Path Planning & G-code Generation]]. Still to add during tuning: `F` feed rate and a `G21`/`G90` preamble
 - [ ] Write Python serial controller script
 - [ ] Test XY movement to commanded coordinates
 - [ ] Measure positional error (motion accuracy test)
@@ -57,7 +57,10 @@ status: active
 - [ ] Evaluate segmentation accuracy (IoU / pixel accuracy)
 - [ ] Download trained `.pt` weights to laptop
 - [ ] Integrate model inference into Python pipeline
-- [ ] Connect segmentation output to path planner
+- [x] Connect segmentation output to path planner — **done (2026-08-03)**, see [[📐 Path Planning & G-code Generation]]. Coordinate mapping (homography + uncalibrated fallback), raster toolpath generator with obstacle subtraction, G-code serialization, `/api/toolpath`, and a Toolpath tab on `camera-view.html` with click-to-pick corner calibration. Verified against `best.pt` on the test images; G-code is emitted but nothing sends it yet
+- [ ] Validate the homography against a tape-measured test panel — **can be done now**, no gantry needed; table ready in [[🧪 Calibration & Testing Log]] §1b
+- [x] Decide envelope-clipping behaviour — **clip, not reject** (2026-08-03). Implemented: clipped against the physical rails (1371.6 × 2743.2 mm less a 50 mm provisional homing margin), not the marker quad, with a soft-limit backstop at G-code emission. See [[📐 Path Planning & G-code Generation]] § Envelope Clipping
+- [ ] **Shoot real wall photos into `samples/`** — every coverage figure so far comes from annotated exports, not photographs. Highest priority is a wall with 4 tape-measured corner markers at ~0°/15°/30°: it unblocks [[🧪 Calibration & Testing Log]] §1b and yields real Chapter 4 data **with no gantry needed**. Hold this set out of Roboflow training
 - [ ] Develop color recommendation module (K-means + harmony rules) — parked, not current focus
 - [ ] Test color recommendations with evaluators (qualitative, n≥5)
 
