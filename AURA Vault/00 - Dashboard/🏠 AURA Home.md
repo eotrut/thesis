@@ -15,9 +15,6 @@ status: active
 
 ---
 
-> [!important] 📌 [[📌 Next Session — Read First]] — pending as of 2026-08-03
-> Delete that note and this banner once it has been read.
-
 ---
 
 ## 📊 Status Panel
@@ -91,6 +88,7 @@ status: active
 11. **Local Flask API is the integration layer** between the model and everything else. The website talks to `localhost:5000`; gantry control will attach to the same server rather than running as a separate script. Chosen over FastAPI because the MJPEG webcam stream is a blocking generator that Flask's threaded server handles without async ceremony. See [[🔌 Backend API & Web Integration]].
 12. **No CDN dependencies anywhere in the demo UI.** The colour wheel is drawn on a canvas rather than loaded from a CDN, because a `<script src="https://…">` fails silently with no internet and the defense venue's connectivity cannot be assumed.
 13. **Colour recommendation clusters the non-wall regions, not the whole image.** Whole-image clustering returns the wall's *current* paint as the dominant colour, so the module would harmonise against the colour being painted over. The segmentation mask is therefore load-bearing for colour recommendation, not just path planning — see [[🎨 Color Recommendation Module]].
+14. **Colour harmony is computed in CIE LCh(ab), not HSV** *(2026-08-04)*. HSV hue encodes no model of human vision, so its +180° "complement" is often not the visual opposite and equal-V swatches look unequal in weight. LCh is perceptually uniform and separates lightness (L\*) from colourfulness (C\*), which lets the output be constrained to an interior-paint band without disturbing the hue relationship it was just given. Adds one dependency, `colour-science` — chosen over `cv2.cvtColor` because OpenCV's 8-bit Lab is rescaled and its numbers are not CIE units. See [[🎨 Color Recommendation Module]].
 
 ---
 

@@ -36,13 +36,16 @@ Loads YOLOv8 (Ultralytics) with COCO-pretrained weights for the zero-shot baseli
 OpenCV homography and scaling transform, computed from physical corner markers affixed to the wall, converts segmentation-mask pixel coordinates into real-world millimeter positions. Stored and reused unless the camera or workpiece geometry changes.
 
 ### Module 4 — Path Planner (`path_planner.py`)
-Converts each calibrated region mask to a raster (boustrophedon) coordinate list, emits G-code with spray `M3`/`M5` toggles at 10–20% pass overlap. Details in [[📐 Path Planning & G-code Generation]].
+Converts each calibrated region mask to a raster (boustrophedon) coordinate list, emits a sequence of (X, Y, spray) coordinates at 10–20% pass overlap. Details in [[📐 Path Planning & G-code Generation]].
+
+> [!note] No G-code / No Marlin (updated 2026-08-03)
+> Build uses Arduino Mega directly wired to TB6600 drivers — no RAMPS, no Marlin firmware. Path planner outputs coordinate lists that `serial_ctrl.py` converts to **custom serial commands** (`MOVE X Y`, `SPRAY ON/OFF`), not standard G-code. See [[🖥️ Serial Communication Protocol]].
 
 ### Module 5 — Color Recommendation (`color_rec.py`)
 Applies color-harmony rules (complementary/analogous/triadic/split-complementary) to dominant colors extracted from a reference image, optionally augmented with a deep-learning palette recommender consistent with the literature (Yuan et al., 2021; Wu et al., 2023). Details in [[🎨 Color Recommendation Module]].
 
 ### Module 6 — Serial Controller (`serial_ctrl.py`)
-`pyserial` command queue at 115200 baud: send one G-code line, block for `ok`, timeout/retry once, halt + spray-off on second failure. Details in [[🖥️ Serial Communication Protocol]].
+`pyserial` custom command queue at 115200 baud: send one command (`MOVE X Y` / `SPRAY ON` / `SPRAY OFF` / `HOME`), block for `ok` response, timeout/retry once, halt + spray-off on second failure. **Not standard G-code** — Arduino runs a custom sketch that parses these commands and drives the TB6600 drivers directly. Details in [[🖥️ Serial Communication Protocol]].
 
 ## Module Architecture Diagram (ASCII)
 ```

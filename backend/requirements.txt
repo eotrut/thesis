@@ -69,6 +69,19 @@ tqdm==4.68.3
 psutil==7.2.2
 matplotlib==3.11.0
 
+# --- Colour science ---------------------------------------------------------
+# CIE sRGB <-> XYZ <-> Lab <-> LCh(ab) for color_recommender.py. Used instead of
+# cv2.cvtColor because OpenCV's 8-bit Lab is quantised and rescaled (L stored
+# 0-255, a/b offset by 128), so its numbers are not CIE units and the module's
+# L*/C* paint limits would not mean what they say.
+#
+# Pure-python + numpy: it added NO transitive dependencies to this venv. It
+# prints a ColourUsageWarning at import about SciPy being absent — ignore it.
+# SciPy only gates spectral/interpolation features; every transform used here is
+# closed-form. color_recommender.py silences that one warning at import. Do not
+# add SciPy for it.
+colour-science==0.4.7
+
 # --- Path planning / toolpath geometry --------------------------------------
 # Polygon boolean ops + scan-line intersection for toolpath_generator.py.
 # None of the risks above apply to it: it has no torch/CUDA coupling at all,
