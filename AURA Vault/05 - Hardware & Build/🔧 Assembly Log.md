@@ -56,8 +56,9 @@ status: active
 
 **Next steps:**
 - Test second NEMA23 + TB6600 unit the same way
-- Integrate both motors into RAMPS board once gantry frame is assembled
-- Verify direction convention matches intended X/Y axis orientation on the wall
+- Wire both X motors directly to the Mega (X-left 3/4/5, X-right 6/7/8) once the gantry frame is assembled — **not** to a RAMPS board, which is no longer in the build
+- Confirm both X drivers step from one routine before belting up; a desync here is R-02
+- Verify direction convention matches intended X/Y axis orientation on the wall, and invert X-right DIR if the motors face opposite ways
 
 **Photos/evidence:** Pending.
 
@@ -81,7 +82,7 @@ status: active
 
 ---
 
-## [Date] — Wiring (motors → drivers → RAMPS)
+## [Date] — Wiring (motors → TB6600 drivers → Arduino Mega, direct)
 **What was done:**
 **Issues encountered:**
 **How resolved:**

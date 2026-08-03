@@ -19,9 +19,9 @@ status: active
 
 ## Phase 1 — Hardware Procurement & Assembly
 - [x] Source and purchase aluminum extrusion rails
-- [x] Purchase Arduino Mega + RAMPS 1.4
-- [ ] Purchase NEMA 23 motors (×3)
-- [ ] Purchase TB6600 drivers (×3)
+- [x] Purchase Arduino Mega ~~+ RAMPS 1.4~~ — **RAMPS bought but not used** (₱380 sunk); the Mega is wired directly to the TB6600s, see [[🔌 Electronics & Wiring]]
+- [ ] Purchase NEMA 23 motors (×3) — **2 of 3 procured**, both allocated to X (dual-X); Y motor outstanding, planned as a borrowed/spare unit
+- [ ] Purchase TB6600 drivers (×3) — **2 of 3 procured**; third needed for Y
 - [ ] Purchase GT2 belts, pulleys, bearings
 - [ ] Purchase 24V 30A PSU
 - [ ] Purchase spray nozzle / airbrush mechanism
@@ -29,13 +29,14 @@ status: active
 - [ ] Assemble X-axis base rail
 - [ ] Assemble Y-axis vertical column
 - [ ] Wire motors to drivers
-- [ ] Wire drivers to RAMPS 1.4
-- [ ] Test motor movement (no load)
+- [ ] Wire drivers directly to Arduino Mega (no RAMPS) — X-left on pins 3/4/5 bench tested 2026-08-03; X-right and Y pending
+- [x] Test motor movement (no load) — single motor bench tested 2026-08-03 at 3A, 1/32 microstepping, ENA confirmed active-low
 - [ ] Calibrate limit switches / homing
 
 ## Phase 2 — Firmware & Motion Control
-- [ ] Flash Arduino with GRBL or custom firmware
+- [ ] Flash Arduino with **custom firmware** (not GRBL — no RAMPS/Marlin in the build). Must drive **both X drivers from one step routine** (R-02 mitigation) and parse the custom command set
 - [x] Define G-code command set — `G0` rapid (dry), `G1` paint move, `M3`/`M5` spray on/off, absolute mm at 2 dp. Emitted by `events_to_gcode()`, documented in [[📐 Path Planning & G-code Generation]]. Still to add during tuning: `F` feed rate and a `G21`/`G90` preamble
+- [ ] **Decide: translate G-code → custom commands in `serial_ctrl.py`, or replace the emitter.** The toolpath stage emits G-code but the Arduino will not parse it; the two ends do not currently meet. Blocks firmware work — see [[🖥️ Serial Communication Protocol]]
 - [ ] Write Python serial controller script
 - [ ] Test XY movement to commanded coordinates
 - [ ] Measure positional error (motion accuracy test)

@@ -9,10 +9,16 @@ status: active
 > [[🔌 Electronics & Wiring]] · [[💧 Spray System Design]] · [[🔧 Assembly Log]] · [[🛒 Bill of Materials]]
 
 ## Gantry Configuration — Why Dual X-Axis Motors
-The gantry is a **Cartesian XY** frame: a horizontal X-axis carries a vertical Y carriage that holds the spray head. The X-axis is **wide**, so a single motor on one end lets the opposite end lag under acceleration — the beam **racks** (skews out of square), and every commanded coordinate becomes wrong. AURA uses **two NEMA 23 motors on the X-axis**, one at each end, mirrored on the controller so they step in lockstep. This keeps the beam square and is the single most important mechanical decision for painting accuracy. The **Y-axis uses one NEMA 23** — it carries only the lightweight spray head, so racking is not a concern.
+The gantry is a **Cartesian XY** frame: a horizontal X-axis carries a vertical Y carriage that holds the spray head. The X-axis is **wide**, so a single motor on one end lets the opposite end lag under acceleration — the beam **racks** (skews out of square), and every commanded coordinate becomes wrong. AURA uses **two NEMA 23 motors on the X-axis**, one at each end, stepped in lockstep so the beam stays square. This is the single most important mechanical decision for painting accuracy. The **Y-axis uses one NEMA 23** — it carries only the lightweight spray head, so racking is not a concern.
 
 > [!warning] Racking is Risk R-02
 > Matched belts, matched pulley tooth counts, a square frame, and homing *both* X corners are all required for the dual-motor scheme to actually prevent racking.
+
+> [!important] Mirroring is now a **firmware** responsibility (2026-08-04)
+> The earlier design mirrored the two X motors on a RAMPS shield. **RAMPS is not in the build** — the Arduino Mega drives the TB6600s directly ([[🔌 Electronics & Wiring]]) — so nothing mirrors the step signal in hardware any more. The Arduino sketch must pulse both X drivers from a single step routine and treat them as one axis. If they are ever driven as two independent axes, R-02 is unmitigated and the dual-motor scheme buys nothing.
+
+> [!note] Procurement status
+> 2 of the 3 NEMA 23 motors are procured, **both allocated to X**. The Y motor is outstanding and is planned as a borrowed/spare unit for initial testing — see [[💰 Budget Tracker]] and [[🔌 Electronics & Wiring]].
 
 ## Frame Material — 2040 Aluminum V-Slot Extrusion
 | Property | Rationale |
@@ -26,15 +32,27 @@ The gantry is a **Cartesian XY** frame: a horizontal X-axis carries a vertical Y
 The Y carriage rides on a **linear rail + carriage** (or V-Slot wheels for budget) and is driven by a single **GT2 belt** from the Y NEMA 23. It holds the spray head at a fixed **Z standoff (~150mm)** from the wall — there is no active Z axis in the prototype.
 
 ## Belt Drive & Steps-per-mm
+
+> [!important] Superseded by the 2026-08-03 bench test — microstepping is **1/32**, not 1/8
+> The TB6600 was bench tested at **32 microsteps / 6400 pulses per revolution** at 3 A ([[🔌 Electronics & Wiring]]). That is the confirmed hardware setting, so the 40 steps/mm figure below is **wrong by a factor of 4**. Anything quoting 40 steps/mm — including [[📝 Chapter 3 - Methodology]] — needs the corrected value.
+
 - **GT2 belt**: 2mm pitch. **Pulley**: 20 teeth → 40mm travel per revolution.
-- NEMA 23 = 200 full steps/rev. At **1/8 microstepping** → 1600 steps/rev.
-- **Steps per mm** = 1600 / 40 = **40 steps/mm**.
-- At **1/16 microstepping** → 3200 / 40 = **80 steps/mm** (finer, slower). Start at 1/8 and tune (see [[🧪 Calibration & Testing Log]]).
+- NEMA 23 = 200 full steps/rev. At **1/32 microstepping** → **6400 steps/rev** (bench confirmed).
+- **Steps per mm** = 6400 / 40 = **160 steps/mm**.
 
 ```
 steps_per_mm = (motor_steps_per_rev * microstep) / (pulley_teeth * belt_pitch)
-             = (200 * 8) / (20 * 2) = 40 steps/mm
+             = (200 * 32) / (20 * 2) = 160 steps/mm
 ```
+
+| Microstepping | Steps/rev | Steps/mm | Note |
+|---|---|---|---|
+| 1/8 | 1600 | 40 | Original plan — **not what the driver is set to** |
+| 1/16 | 3200 | 80 | — |
+| **1/32** | **6400** | **160** | ✅ Bench confirmed 2026-08-03 |
+
+> [!note] Finer microstepping is not free resolution
+> 1/32 gives a smaller commanded increment, but step *accuracy* is still bounded by belt stretch, pulley runout and motor detent — not by the microstep count. Treat 160 steps/mm as the command scaling, and let the ISO 9283 positional-accuracy measurement ([[🧪 Calibration & Testing Log]]) say what the real resolution is. It also raises the pulse rate 4× for the same feed, so check the Arduino can sustain the step frequency before assuming the speed budget still holds.
 
 ## Travel Range — Locked (2026-08-03)
 | Axis | Rail length | mm | Notes |
@@ -64,7 +82,7 @@ A printed/bracketed mount fixes the nozzle to the Y carriage, aimed perpendicula
 ## Known Mechanical Risks & Mitigations
 | Risk | Mitigation |
 |---|---|
-| Racking (R-02) | Dual-X mirrored motors, matched belts, dual homing |
+| Racking (R-02) | Dual-X motors stepped in lockstep **in firmware** (no RAMPS), matched belts, dual homing |
 | Belt slack → lost steps (R-15) | Proper tensioners, GT2 (low stretch), tune steps/mm |
 | Frame not square | Measure diagonals, use corner brackets, re-check after tensioning |
 | Vibration at speed | Lower acceleration, add feet/damping, brace long spans |

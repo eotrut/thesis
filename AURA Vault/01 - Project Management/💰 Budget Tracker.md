@@ -16,7 +16,7 @@ status: active
 | 2 | NEMA 23 Stepper Motor | 3 | 1,200 | 3,600 | — | Lazada PH | 💸 budget risk |
 | 3 | TB6600 Driver | 3 | 550 | 1,650 | — | Shopee PH | |
 | 4 | Arduino Mega 2560 (clone) | 1 | 500 | 500 | 480 | Lazada PH | ♻️ cheaper local |
-| 5 | RAMPS 1.4 shield | 1 | 400 | 400 | 380 | Shopee PH | |
+| 5 | ~~RAMPS 1.4 shield~~ | 1 | 400 | 400 | 380 | Shopee PH | ❌ **not in build — ₱380 sunk** |
 | 6 | GT2 belt + pulleys + idlers | set | 500 | 500 | — | Lazada PH | |
 | 7 | Linear rails + blocks (MGN set ×2) | 2 | 1,800 | 3,600 | — | Lazada PH | 💸 budget risk / ♻️ surplus V-wheels |
 | 8 | 24V 30A PSU | 1 | 1,300 | 1,300 | — | Octagon / Lazada | |
@@ -44,7 +44,7 @@ status: active
 
 > [!danger] Most likely to blow the budget
 > - **Linear rails (item 7)** — genuine MGN rails are pricey. **Mitigation:** use V-Slot wheels riding directly in the 2040 extrusion for the prototype; save rails for one axis only if precision demands it.
-> - **NEMA 23 motors (item 2)** — 3 motors add up fast. **Mitigation:** buy 2 first (dual-X) + reuse a spare/borrowed motor for Y initial testing.
+> - **NEMA 23 motors (item 2)** — 3 motors add up fast. **Mitigation:** buy 2 first (dual-X) + reuse a spare/borrowed motor for Y initial testing. ✅ *In effect as of 2026-08-03 — the 2 procured motors are both on X; the Y unit is still to be borrowed. Note this also leaves a **third TB6600 (item 3)** outstanding, which the mitigation did not account for.*
 > - **Extrusion (item 1)** — long lengths + shipping. **Mitigation:** buy cut-to-length from a local Pampanga metal supplier instead of shipping full bars.
 
 > [!tip] Cheaper local alternatives

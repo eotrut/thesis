@@ -14,6 +14,15 @@ status: implemented
 >
 > ⚠️ Every coverage figure measured so far came from `website/assets/test_result_*.jpg`, which are **annotated segmentation exports, not photographs**. The geometry is unaffected; the segmentation quality behind it is optimistic. Real photos go in `samples/` — see `samples/README.md`.
 
+> [!bug] The G-code this module emits is not what the Arduino will accept (2026-08-04)
+> The firmware decision changed after this note was written: **no RAMPS, no Marlin, no GRBL** ([[🔌 Electronics & Wiring]]), so the Arduino runs a custom sketch with a custom command set (`MOVE`, `SPRAY ON/OFF`, `HOME`). `events_to_gcode()` still produces `G0`/`G1`/`M3`/`M5`.
+>
+> Nothing is broken today — nothing sends the output yet — but the two ends do not meet. **Open decision, blocks firmware work:**
+> 1. **Translate in `serial_ctrl.py`** — keep this emitter (built, tested, committed) and convert on the way out. Smallest change; keeps the G-code artefact, which is the more conventional thing to show a panel.
+> 2. **Replace the emitter** — output custom commands directly from this stage. Fewer moving parts, but discards working tested code.
+>
+> Tracked in [[🖥️ Serial Communication Protocol]] and [[📋 Master Task Tracker]] Phase 2. Everything else in this note — raster geometry, obstacle subtraction, envelope clipping — is unaffected either way, since all of it operates on mm coordinates before serialization.
+
 ## Input
 A **segmentation mask** (binary image; paintable regions = white) — in practice, the normalized 0–1 polygon already returned per-detection by `/api/segment`.
 

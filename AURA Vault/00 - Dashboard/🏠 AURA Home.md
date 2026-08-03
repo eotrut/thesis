@@ -75,10 +75,10 @@ status: active
 
 ## 🔒 Key Decisions Made
 
-1. **Dual X-axis NEMA 23 motors** to prevent gantry racking; single motor on Y-axis.
+1. **Dual X-axis NEMA 23 motors** to prevent gantry racking; single motor on Y-axis. *(Reaffirmed 2026-08-04.* 2 of 3 motors procured, **both for X**; the Y motor is outstanding and planned as a borrowed/spare unit. Lockstep is now enforced in firmware, not by a shield — see #3.*)*
 2. **TB6600 drivers over A4988** — NEMA 23 draws up to ~4.5A, far beyond A4988's limit.
-3. **Arduino Mega 2560 + RAMPS 1.4** as the motion backbone, used strictly as a STEP/DIR/endstop breakout — RAMPS does not power the motors. The 24V/30A PSU feeds the TB6600 drivers directly.
-4. **Laptop (RTX 3050) does all AI inference**; Arduino only executes motion + spray commands over USB serial (pyserial, 115200 baud, GRBL-style G-code).
+3. **Arduino Mega 2560 wired directly to the TB6600 drivers** *(corrected 2026-08-03 — RAMPS 1.4 is NOT in the build)*. The 24V/30A PSU feeds the drivers; the Mega carries STEP/DIR/ENABLE and endstops. **Consequence:** nothing mirrors the dual-X step signal in hardware any more, so the firmware must drive both X motors as one axis or decision #1 buys nothing. See [[🔌 Electronics & Wiring]].
+4. **Laptop (RTX 3050) does all AI inference**; Arduino only executes motion + spray commands over USB serial (pyserial, 115200 baud). **Custom command set** (`MOVE`, `SPRAY ON/OFF`, `HOME`) — *not* GRBL/G-code, corrected 2026-08-03. Without Marlin or GRBL underneath there is no parser to inherit, so G-code would have to be written from scratch. `backend/toolpath_generator.py` still emits G-code and the bridge is an **open decision** — see [[🖥️ Serial Communication Protocol]].
 5. **YOLOv8 (Ultralytics) instance segmentation** confirmed — object detection (bounding boxes) was tested and ruled out. Fine-tuning on Roboflow-labeled dataset via Kaggle Tesla T4 GPU. *(Supersedes earlier MobileNetV3 + DeepLabV3+ plan — see [[🔮 Segmentation Model]].)*
 6. **OpenCV-based homography and scaling calibration** (physical corner markers) maps segmentation-mask pixel coordinates to real-world millimeter positions on the wall.
 7. **Raster-scan (boustrophedon) toolpath planning** for reliability over optimality at prototype scale.

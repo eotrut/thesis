@@ -18,7 +18,7 @@ status: active
 | 7 | **Architecture Diagram** | IPO / block diagram | *Point, do not read* |
 | 8 | **AI Design — Segmentation** | MobileNetV3+DeepLabV3+; 4GB fit; >0.65 mIoU | *Have VRAM number ready* |
 | 9 | **AI Design — Color Rec** | K-means + harmony rules; palette output; n≥5 eval | *Defend as AI-adjacent* |
-| 10 | **Hardware Design** | Dual-X anti-racking; TB6600; RAMPS; 40 steps/mm | *Racking = crux* |
+| 10 | **Hardware Design** | Dual-X anti-racking (lockstep in firmware); TB6600 direct-wired to Mega; 160 steps/mm @ 1/32 | *Racking = crux* |
 | 11 | **Spray System** | Pump + solenoid; adaptive on/off; drip/clog mitigation | *Acknowledge top risk* |
 | 12 | **Methodology** | Developmental-experimental; iterative prototyping | *Tie to research design* |
 | 13 | **Evaluation Framework** | 7 metrics table; targets/thresholds | *Objective + qualitative* |

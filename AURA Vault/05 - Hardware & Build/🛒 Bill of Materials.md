@@ -13,7 +13,7 @@ status: active
 | NEMA 23 Stepper Motor | ~3 Nm, 2.8–4.5A | 3 | 1,200 | 3,600 | Lazada PH | 2× X (dual), 1× Y |
 | TB6600 Driver | up to 4.0A, 9–42V | 3 | 550 | 1,650 | Shopee PH | Confirm DIP table on label |
 | Arduino Mega 2560 | clone | 1 | 500 | 500 | Lazada PH | Motion controller host |
-| RAMPS 1.4 shield | breakout only | 1 | 400 | 400 | Shopee PH | STEP/DIR/endstop breakout |
+| ~~RAMPS 1.4 shield~~ | ~~breakout only~~ | 1 | 400 | 400 | Shopee PH | ❌ **Not in build (2026-08-03)** — purchased, then dropped; Mega wires straight to the TB6600s |
 | GT2 belt + pulleys + idlers | 2mm pitch, 20T | set | 500 | 500 | Lazada PH | Low-stretch belt |
 | Linear rails + blocks | MGN12 set ×2 | 2 | 1,800 | 3,600 | Lazada PH | ♻️ V-wheels if over budget |
 | 24V PSU | 24V, 30A | 1 | 1,300 | 1,300 | Octagon / Lazada | Fuse the output |

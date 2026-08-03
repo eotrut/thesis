@@ -12,48 +12,66 @@ status: synced-with-manuscript
 > [!warning] Sync note (2026-07-12) — superseded decision
 > The AI stack originally planned here (**MobileNetV3 + DeepLabV3+**, trained from scratch on ADE20K + a custom set) has been **replaced** by **YOLOv8 (Ultralytics) instance segmentation**, evaluated **zero-shot-first** against COCO-pretrained weights. Custom-dataset fine-tuning (Roboflow annotation → Kaggle Tesla T4 GPU) is now a *conditional fallback*, triggered only if zero-shot performance is judged insufficient — not the default plan. See [[🔮 Segmentation Model]] for the updated module detail and [[📝 Chapter 1 - Introduction]] / [[📚 Literature Review Master]] for the rationale (COCO-pretrained backbones generalize well enough that fine-tuning becomes optional).
 
-## Python Pipeline (`main.py` flow) — updated
+> [!important] Module names below are the **original plan**; the built code uses different files (2026-08-04)
+> The pipeline was implemented as a Flask service rather than a `main.py` script, so the planned one-module-per-stage layout did not survive contact. Mapping:
+>
+> | Planned | As built | Note |
+> |---|---|---|
+> | `main.py` | `backend/app.py` | Flask app; orchestrates the stages as API endpoints |
+> | `camera.py` | `backend/app.py` | Frame acquisition + MJPEG stream live in the server |
+> | `segmentation.py` | `backend/model_loader.py` (+ `app.py`) | Weight loading vs. per-request inference |
+> | `calibration.py` | `backend/coordinate_mapping.py` | Homography + uncalibrated fallback |
+> | `path_planner.py` | `backend/toolpath_generator.py` | Raster planning, obstacle subtraction, envelope clipping |
+> | `color_rec.py` | `backend/color_recommender.py` | See [[🎨 Color Recommendation Module]] |
+> | `serial_ctrl.py` | *not built* | Phase 2 — [[🖥️ Serial Communication Protocol]] |
+> | `evaluate.py` | *not built* | Metrics collected ad hoc; `backend/tools/test_toolpath.py` covers the toolpath stage only |
+
+## Python Pipeline (as built) — updated
 ```
-main.py
-  1. camera.capture_frame()          -> raw image
-  2. preprocess(image)               -> model input
-  3. segmentation.infer(image)       -> YOLOv8 instance masks (zero-shot COCO weights, or fine-tuned)
-  4. calibration.to_mm(masks)        -> OpenCV homography/scaling -> mm-space regions
-  5. color_rec.recommend(image)      -> palette + region->color map
-  6. path_planner.plan(regions, mm)  -> coordinate list -> G-code
-  7. serial_ctrl.stream(gcode)       -> Arduino executes (move + spray)
-  8. evaluate.capture_and_score()    -> metrics (IoU/mAP, mm error, coverage %, Likert ratings)
+backend/app.py  (Flask, localhost:5000)
+  1. frame from webcam / upload        -> raw image
+  2. model_loader + run_inference()    -> YOLOv8 instance masks (zero-shot COCO weights, or fine-tuned)
+  3. coordinate_mapping.to_mm(masks)   -> OpenCV homography/scaling -> mm-space regions
+  4. color_recommender.recommend()     -> palette (CIE LCh harmony)
+  5. toolpath_generator.plan(regions)  -> coordinate list -> G-code
+  6. [serial_ctrl.stream() — NOT BUILT]-> Arduino executes (move + spray)
+  7. [evaluate — NOT BUILT]            -> metrics (IoU/mAP, mm error, coverage %, Likert ratings)
 ```
 
 ## Modules
-### Module 1 — Image Capture (`camera.py`)
+### Module 1 — Image Capture (planned `camera.py` → built in `backend/app.py`)
 OpenCV `VideoCapture` grabs a frame from the USB/HD camera; handles a fixed, calibrated camera pose so pixel→mm mapping (via the homography transform) stays valid.
 
-### Module 2 — Segmentation (`segmentation.py`)
+### Module 2 — Segmentation (planned `segmentation.py` → built as `backend/model_loader.py`)
 Loads YOLOv8 (Ultralytics) with COCO-pretrained weights for the zero-shot baseline; runs instance-segmentation inference on the RTX 3050 with CUDA acceleration. If zero-shot IoU/mAP falls below the acceptable threshold, a Roboflow-labeled custom dataset is fine-tuned on a Kaggle Tesla T4 GPU and the resulting weights are redeployed locally. Details in [[🔮 Segmentation Model]].
 
-### Module 3 — Calibration (`calibration.py`)
+### Module 3 — Calibration (planned `calibration.py` → built as `backend/coordinate_mapping.py`)
 OpenCV homography and scaling transform, computed from physical corner markers affixed to the wall, converts segmentation-mask pixel coordinates into real-world millimeter positions. Stored and reused unless the camera or workpiece geometry changes.
 
-### Module 4 — Path Planner (`path_planner.py`)
+### Module 4 — Path Planner (planned `path_planner.py` → built as `backend/toolpath_generator.py`)
 Converts each calibrated region mask to a raster (boustrophedon) coordinate list, emits a sequence of (X, Y, spray) coordinates at 10–20% pass overlap. Details in [[📐 Path Planning & G-code Generation]].
 
 > [!note] No G-code / No Marlin (updated 2026-08-03)
 > Build uses Arduino Mega directly wired to TB6600 drivers — no RAMPS, no Marlin firmware. Path planner outputs coordinate lists that `serial_ctrl.py` converts to **custom serial commands** (`MOVE X Y`, `SPRAY ON/OFF`), not standard G-code. See [[🖥️ Serial Communication Protocol]].
 
-### Module 5 — Color Recommendation (`color_rec.py`)
-Applies color-harmony rules (complementary/analogous/triadic/split-complementary) to dominant colors extracted from a reference image, optionally augmented with a deep-learning palette recommender consistent with the literature (Yuan et al., 2021; Wu et al., 2023). Details in [[🎨 Color Recommendation Module]].
+> [!bug] As built, the toolpath stage emits G-code — the conversion described above does not exist yet
+> `toolpath_generator.events_to_gcode()` produces `G0`/`G1`/`M3`/`M5` lines today. `serial_ctrl.py` is not written, so nothing converts them to `MOVE`/`SPRAY`. Whether to add that translation or replace the emitter is an **open decision** blocking firmware work — see [[🖥️ Serial Communication Protocol]].
 
-### Module 6 — Serial Controller (`serial_ctrl.py`)
+### Module 5 — Color Recommendation (planned `color_rec.py` → built as `backend/color_recommender.py`)
+Applies color-harmony rules (complementary/analogous/triadic/split-complementary) to dominant colors extracted from a reference image, optionally augmented with a deep-learning palette recommender consistent with the literature (Yuan et al., 2021; Wu et al., 2023). Harmony angles are computed in **CIE LCh(ab)**, not HSV, and output is constrained to an interior-paint L\*/C\* band. Details in [[🎨 Color Recommendation Module]].
+
+### Module 6 — Serial Controller (`serial_ctrl.py` — **not built**, Phase 2)
 `pyserial` custom command queue at 115200 baud: send one command (`MOVE X Y` / `SPRAY ON` / `SPRAY OFF` / `HOME`), block for `ok` response, timeout/retry once, halt + spray-off on second failure. **Not standard G-code** — Arduino runs a custom sketch that parses these commands and drives the TB6600 drivers directly. Details in [[🖥️ Serial Communication Protocol]].
 
 ## Module Architecture Diagram (ASCII)
 ```
- camera.py ──> segmentation.py (YOLOv8) ──> calibration.py ──> path_planner.py ──> serial_ctrl.py ──> [Arduino]
-      │                                                              ^
-      └──────────────────────> color_rec.py ────────────────────────┘  (palette + region->color)
+ app.py ──> model_loader.py (YOLOv8) ──> coordinate_mapping.py ──> toolpath_generator.py ──╮
+   │                                                                                      │
+   │                                                                      [serial_ctrl.py] │  NOT BUILT
+   │                                                                              ╰──> [Arduino]
+   └──────────────────────> color_recommender.py ──────────────────────────────────╯  (palette)
                                      │
-                                evaluate.py  (metrics, offline)
+                             [evaluate.py]  NOT BUILT  (metrics, offline)
 ```
 
 ## Model Choice Rationale — updated

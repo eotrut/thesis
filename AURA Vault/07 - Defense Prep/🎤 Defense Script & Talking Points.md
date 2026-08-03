@@ -20,7 +20,7 @@ status: active
 *Speaker note: naming the scope up front disarms 'why not industrial?' questions later.*
 
 ## 4. System Overview (3 min)
-"The camera feeds a laptop with an RTX 3050. The laptop segments the wall, recommends colors, plans paths, and streams G-code over USB serial to an Arduino Mega with RAMPS 1.4, which drives three NEMA 23 motors and the spray system."
+"The camera feeds a laptop with an RTX 3050. The laptop segments the wall, recommends colors, plans paths, and streams motion commands over USB serial to an Arduino Mega 2560, which drives three NEMA 23 motors through TB6600 drivers and the spray system."
 *Speaker note: point at the architecture diagram. Stress the split: laptop thinks, Arduino acts.*
 
 ## 5. AI Components (3 min)
