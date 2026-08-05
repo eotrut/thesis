@@ -1,4 +1,6 @@
-# AURA — AI-Based Autonomous Wall Painting Robot
+# AURA — Autonomous Unified Robotic Adaptive
+
+An AI-based autonomous wall-painting robot integrating deep learning segmentation, color recommendation, and adaptive spray control.
 
 Undergraduate thesis project · BS Computer Engineering · Holy Angel University, Angeles City, Pampanga, Philippines
 

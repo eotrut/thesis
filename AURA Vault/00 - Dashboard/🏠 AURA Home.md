@@ -1,13 +1,13 @@
 ---
 tags: [dashboard, moc, aura]
 created: 2026-03-29
-updated: 2026-08-04
+updated: 2026-08-05
 status: active
 ---
 # 🏠 AURA — Home
 
-> **AURA — AI-Based Autonomous Wall Painting Robot**
-> *AURA: An AI-Based Autonomous Wall Painting Robot Integrating Deep Learning Segmentation, Color Recommendation, and Adaptive Spray Control*
+> **AURA — Autonomous Unified Robotic Adaptive**
+> *AURA (Autonomous Unified Robotic Adaptive): AI-Based Autonomous Wall Painting Robot Integrating Deep Learning Segmentation, Color Recommendation, and Adaptive Spray Control*
 > Bachelor of Science in Computer Engineering — School of Engineering and Architecture
 > **Holy Angel University**, Angeles City, Pampanga, Philippines
 > Researchers: **Manabat, Kurt Robyn A.** · David, Reymon Jr G. · Usi, Lester
@@ -25,7 +25,7 @@ status: active
 | **AI Status** | ✅ 300-image fine-tune done — mAP@0.50 **0.780**, precision **0.845**, recall **0.729**; expanding toward 1,000 |
 | **Software Status** | ✅ Model deployed behind local Flask API (~100 ms/frame on RTX 3050); website running on live inference — see [[🔌 Backend API & Web Integration]] |
 | **Hardware Status** | ✅ All parts procured; dual V-slot bottom rail locked — assembly begins once all parts have arrived |
-| **Open Decision** | None currently open |
+| **Open Decision** | None currently open — see decision list for 2026-08-05 additions |
 | **Next Milestone** | All parts arrive → begin gantry frame assembly |
 | **Budget Cap** | PHP 35,000 |
 | **Budget Committed** | ~PHP 6,300 (pre-build) — update after hardware purchases confirmed |
@@ -88,6 +88,8 @@ status: active
 12. **No CDN dependencies anywhere in the demo UI.** The colour wheel is drawn on a canvas rather than loaded from a CDN, because a `<script src="https://…">` fails silently with no internet and the defense venue's connectivity cannot be assumed.
 13. **Colour recommendation clusters the non-wall regions, not the whole image.** Whole-image clustering returns the wall's *current* paint as the dominant colour, so the module would harmonise against the colour being painted over. The segmentation mask is therefore load-bearing for colour recommendation, not just path planning — see [[🎨 Color Recommendation Module]].
 14. **Colour harmony is computed in CIE LCh(ab), not HSV** *(2026-08-04)*. HSV hue encodes no model of human vision, so its +180° "complement" is often not the visual opposite and equal-V swatches look unequal in weight. LCh is perceptually uniform and separates lightness (L\*) from colourfulness (C\*), which lets the output be constrained to an interior-paint band without disturbing the hue relationship it was just given. Adds one dependency, `colour-science` — chosen over `cv2.cvtColor` because OpenCV's 8-bit Lab is rescaled and its numbers are not CIE units. See [[🎨 Color Recommendation Module]].
+15. **Acronym corrected to "Autonomous Unified Robotic Adaptive"** *(2026-08-05)*. "AI-Based Autonomous Wall Painting Robot" was never a real acronym for AURA — its initials don't spell A-U-R-A. Reverted to a working acronym (echoing the project's original "Autonomous Unified Robotic Artist," letters-correct but vague), swapping the last word for "Adaptive." "AI-Based Autonomous Wall Painting Robot" is kept as the descriptive subtitle. See [[📝 Chapter 1 - Introduction]]. **Still needs to be manually pasted into the live Google Doc concept paper** — no Drive edit tool available to do that from here.
+16. **Painting output quality is a purely quantitative criterion, not a human-rated one** *(2026-08-05)*. "Painting output quality" (Scope) and "painting accuracy" (RQ6/Objective 6) describe execution — did the gantry paint where and how it should — which is already captured by motion accuracy (ISO 9283), spray consistency, and coverage uniformity (both ASTM D823). Only color-recommendation quality needs subjective human judgment, so the Participants section (Methodology) is correctly scoped to color-recommendation evaluators only — no second evaluator group is needed. The Data Analysis paragraph's phrase "and overall painting output" (implying painting output also gets a user rating scale) should be cut or reworded to point at the quantitative metrics instead. See [[📝 Chapter 3 - Methodology]].
 
 ---
 

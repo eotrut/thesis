@@ -1,6 +1,7 @@
 ---
 tags: [thesis, writing, feedback]
 created: 2026-03-29
+updated: 2026-08-05
 status: active
 ---
 # 📝 Writing Notes & Advisor Feedback
@@ -90,3 +91,40 @@ status: active
 **Implementation guidance recorded for the next Claude Code pass:** clip against the gantry's **physical rail travel limits** (minus a homing/limit-switch safety margin), not the 4-marker calibration quad — the markers only define the pixel↔mm mapping, not where the machine can physically move. Keep a hard soft-limit check at G-code emission as a backstop (standard GRBL/CNC practice). `/api/toolpath` should report clipped/skipped paintable area so it's visible how much wall still needs another pass. Full detail in [[📐 Path Planning & G-code Generation]] § Envelope Clipping.
 
 **Relevance to Chapter 4/5:** this is a genuine design decision with engineering rationale (not just an implementation detail) — worth a sentence in Methodology if not already covered, and a natural candidate for the Discussion chapter's "system limitations" framing (multi-pass coverage is a scope choice, not a failure mode).
+
+## 2026-08-05 — Concept paper review: pending manual Doc edits
+
+Pending — none of these are applied to the live Google Doc yet.
+
+**Running header** (every page)
+Find: `AURA (AI-Based Autonomous Wall Painting Robot)`
+Replace: `AURA (Autonomous Unified Robotic Adaptive)`
+
+**Abstract, opening sentence** (p.2)
+Find: "This study proposed the design and development of AURA (AI-based Autonomous Wall Painting Robot), a deep learning-based framework that unified spatial perception, color recommendation, and adaptive spray control within a single physical prototype."
+Replace: "This study proposed the design and development of AURA (Autonomous Unified Robotic Adaptive), an AI-based autonomous wall-painting robot and deep learning-based framework that unified spatial perception, color recommendation, and adaptive spray control within a single physical prototype."
+
+**Abstract, later sentence** (p.2)
+Find: "The resulting motion and spray commands were serialized as G-code-style instructions and transmitted to the Arduino over USB via pyserial, which then actuated the stepper motors and solenoid-controlled spray hardware."
+Replace: "The resulting motion and spray commands were serialized internally as G-code-style instructions, translated into a custom command protocol (MOVE, SPRAY ON/OFF, HOME), and transmitted to the Arduino over USB via pyserial, which then actuated the stepper motors and solenoid-controlled spray hardware."
+
+**Introduction, pipeline-summary paragraph** (p.15)
+Find: "...a raster toolpath generator that converts segmentation masks into physical scan paths, a pyserial-based bridge that transmits G-code-style commands to an Arduino Mega, and an AI-based color recommendation module..."
+Replace: "...a raster toolpath generator that converts segmentation masks into physical scan paths, a pyserial-based bridge that translates internally generated G-code-style commands into a custom command protocol before transmitting them to an Arduino Mega, and an AI-based color recommendation module..."
+
+**Scope and Delimitation, bullet list** (p.19)
+Find: "Use of a microcontroller-based control system (Arduino Mega, wired directly to the TB6600 drivers) with a 24 V DC power supply, driven from Python via pyserial over USB using G-code-style commands."
+Replace: "Use of a microcontroller-based control system (Arduino Mega, wired directly to the TB6600 drivers) with a 24 V DC power supply, driven from Python via pyserial over USB using a custom command protocol (MOVE, SPRAY ON/OFF, HOME) translated from an internal G-code-style representation."
+
+**Rationale section** (p.22)
+Find: "The core innovation of AURA is not any single subsystem but the unified pipeline from perception to physical paint application: a captured wall image is segmented by YOLOv8, calibrated into real-world coordinates through OpenCV homography, converted into a raster toolpath, transmitted to an Arduino Mega via pyserial as G-code-style commands, and executed on a two-axis gantry with adaptive spray control."
+Replace: "The core innovation of AURA is not any single subsystem but the unified pipeline from perception to physical paint application: a captured wall image is segmented by YOLOv8, calibrated into real-world coordinates through OpenCV homography, converted into a raster toolpath, translated into a custom command protocol, and transmitted to an Arduino Mega via pyserial, and executed on a two-axis gantry with adaptive spray control."
+
+**Methodology, Data Analysis paragraph**
+Find: "Qualitative analysis will involve user evaluation of color recommendations and overall painting output using a rating scale."
+Replace: "Qualitative analysis will involve user evaluation of color recommendations using a rating scale, while overall painting output is assessed through the quantitative accuracy and coverage metrics above."
+
+**Diagram fixes — edit at the `.drawio` source, not the Doc text**
+- General Block Diagram (p.25): arrow "G-code Commands (Serial)" → "Custom Protocol Commands (Serial)"
+- System Block Diagram (p.26): Control Board box "Parses G-code · STEP/DIR/EN breakout · relay control (M3/M5) · endstop homing" → "Parses custom command set (MOVE/SPRAY/HOME) · STEP/DIR/EN breakout · relay control (M3/M5) · endstop homing"
+- Flowchart (p.27): "Raster Path Planning + G-code Generation" → "Raster Path Planning + Toolpath Generation"; "Stream G-code Commands / pyserial, 115200 baud – line-by-line, wait for 'ok'" → "Stream Custom Protocol Commands / pyserial, 115200 baud – line-by-line, wait for ack"

@@ -1107,7 +1107,7 @@ def startup_report() -> None:
 
     print()
     print(line)
-    print("  AURA — AI-Based Autonomous Wall Painting Robot · Backend API")
+    print("  AURA — Autonomous Unified Robotic Adaptive · Backend API")
     print(line)
     print(f"  Server        : http://localhost:{PORT}")
     print(f"  Website       : http://localhost:{PORT}/index.html")

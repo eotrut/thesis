@@ -36,7 +36,7 @@ status: active
 ---
 # 🏠 AURA — Home
 
-> **AURA — Autonomous Unified Robotic Artist**
+> **AURA — Autonomous Unified Robotic Adaptive**
 > *Deep Learning-Based Autonomous Wall Painting Robot*
 > Bachelor of Science in Computer Engineering — School of Engineering and Architecture
 > **Holy Angel University**, Angeles City, Pampanga, Philippines
@@ -1951,7 +1951,7 @@ status: active
 > [!info] ~17 minutes. Speaker notes in *italics*. Pairs with [[📊 Presentation Outline]] and [[❓ Anticipated Panel Questions & Answers]].
 
 ## 1. Opening (2 min)
-"Good [morning/afternoon]. I am Kurt Robyn Manabat, presenting **AURA — Autonomous Unified Robotic Artist**, a deep-learning-based autonomous wall-painting robot, for the Bachelor of Science in Computer Engineering at Holy Angel University."
+"Good [morning/afternoon]. I am Kurt Robyn Manabat, presenting **AURA — Autonomous Unified Robotic Adaptive**, a deep-learning-based autonomous wall-painting robot, for the Bachelor of Science in Computer Engineering at Holy Angel University."
 *Speaker note: state names of teammates (David, Usi). Slow down. Make eye contact with each panelist once.*
 
 ## 2. Problem Motivation (2 min)

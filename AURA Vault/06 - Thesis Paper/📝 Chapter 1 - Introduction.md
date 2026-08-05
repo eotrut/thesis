@@ -1,7 +1,7 @@
 ---
 tags: [thesis, chapter-1, introduction]
 created: 2026-03-29
-updated: 2026-08-04
+updated: 2026-08-05
 status: synced-with-manuscript
 ---
 # 📝 Chapter 1 — Introduction
@@ -12,13 +12,23 @@ status: synced-with-manuscript
 > [!info] Sync note (2026-08-04)
 > RQ4, Specific Objective 4, and the Rationale paragraph corrected: the toolpath generator emits G-code-style commands **internally**, but there is no RAMPS shield and no G-code-parsing firmware on the Arduino, so those commands are translated into a custom serial protocol (`MOVE`, `SPRAY ON/OFF`, `HOME`) before transmission — matching [[📝 Chapter 3 - Methodology]] §3.6 step 7-8 and the three `.drawio` architecture diagrams (relabeled the same day).
 
+> [!warning] Acronym correction (2026-08-05)
+> "AURA (AI-Based Autonomous Wall Painting Robot)" was never a real acronym — the initials of "AI-Based Autonomous Wall Painting Robot" spell A-B-A-W-P-R, not AURA. Kurt caught this. The project's original expansion, "Autonomous Unified Robotic Artist," did correctly spell A-U-R-A, but got dropped somewhere during the architecture pivot without anyone checking the replacement still worked letter-for-letter. Corrected to **AURA (Autonomous Unified Robotic Adaptive)** — verified A-U-R-A — with "AI-Based Autonomous Wall Painting Robot" kept as a descriptive subtitle, not the acronym expansion. **This same fix still needs to be pasted into the live Google Doc concept paper by hand — there's no Drive edit tool available to do it automatically.**
+
+> [!warning] Concept-paper review (2026-08-05)
+> Read the submitted concept-paper PDF end to end. Findings:
+> 1. **Acronym fix only half-applied.** Title page and RQ/Objectives already read "AURA (Autonomous Unified Robotic Adaptive)" — but the running header on every page, plus the Abstract's opening sentence, still expand AURA as "AI-Based Autonomous Wall Painting Robot" (wrong letters, doesn't spell AURA). Still not pasted into the live Google Doc — see decision #15.
+> 2. **G-code vs. custom-protocol framing bug found in 6 more text locations plus 3 diagram labels**, beyond the RQ4/Objective 4/Rationale instance already logged 2026-08-04. Confirmed still broken: Abstract (two separate sentences, p.2), Introduction pipeline-summary paragraph (p.15), Scope bullet (p.19), and the Rationale paragraph (p.22) — all say commands are "transmitted...as G-code" instead of "translated into the custom protocol, then transmitted." Plus 3 diagram/flowchart labels baked into images (not text-searchable): General Block Diagram (p.25), System Block Diagram (p.26 — Control Board box literally says "Parses G-code," the most visible instance), and the Flowchart (p.27 — step labels plus "wait for 'ok'", which is GRBL/Marlin's ack string, not this project's). These live in the `.drawio` source files.
+> 3. Confirmed already correct, no changes needed: Specific Objective 4 (p.20), Procedure Steps 5, 7, and 8 (pp.32–33) — these already model the right "internal G-code-style representation → translated → transmitted" framing.
+> Full find/replace text for all 9 fixes logged in [[📝 Writing Notes & Advisor Feedback]].
+
 ## Title
-**AURA (AI-Based Autonomous Wall Painting Robot): Integrating Deep Learning Segmentation, Color Recommendation, and Adaptive Spray Control**
+**AURA (Autonomous Unified Robotic Adaptive): AI-Based Autonomous Wall Painting Robot Integrating Deep Learning Segmentation, Color Recommendation, and Adaptive Spray Control**
 
 ## Background of the Study
 Manual wall painting is labor-intensive, hazardous, and inconsistent: painters face elevated risk of respiratory impairment and asthma from VOC exposure (Sekhar et al., 2024; Arrandale et al., 2025; Boadu et al., 2023; Patel et al., 2024; Bello et al., 2020), plus fall risk and musculoskeletal strain from working at height (NIOSH, 2024). In the Philippines, DOLE Department Order No. 13 s.1998 and RA 11058 codify the resulting safety obligations. Prior automated wall-painting robots (**Kumtole** et al., 2022; Patil, 2021; Megalingam et al., 2020; Vijaya Kumar et al., 2025; Thale et al., 2022; Shamseldin, 2024; Zhou et al., 2022; Al-Ayoub et al., 2024) demonstrate that the physical task can be automated, but they operate on **pre-programmed, fixed motion** — they do not perceive the wall or reason about the design. Parallel advances in deep-learning perception — Mask R-CNN (He et al., 2017), UNet++ (Zhou et al., 2019), wall segmentation (Bjekic et al., 2023), YOLOv8/Ultralytics (Jocher et al., 2023) — and AI color recommendation (Yuan et al., 2021; Wu et al., 2023) have matured largely in isolation, rarely closing the loop into a physical actuator.
 
-**AURA (AI-Based Autonomous Wall Painting Robot)** unifies deep-learning spatial segmentation (YOLOv8), OpenCV-based homography calibration, raster toolpath generation, pyserial-mediated Arduino adaptive spray control, and AI-based color recommendation into a single undergraduate-scale prototype: a 2D vertical gantry (2040 aluminum extrusion, dual-X + single-Y NEMA 23 motors, TB6600 drivers, Arduino Mega 2560), a USB/HD camera, and a solenoid-actuated spray subsystem. Full RRL synthesis: [[📚 Literature Review Master]].
+**AURA (Autonomous Unified Robotic Adaptive)** — an AI-based autonomous wall-painting robot — unifies deep-learning spatial segmentation (YOLOv8), OpenCV-based homography calibration, raster toolpath generation, pyserial-mediated Arduino adaptive spray control, and AI-based color recommendation into a single undergraduate-scale prototype: a 2D vertical gantry (2040 aluminum extrusion, dual-X + single-Y NEMA 23 motors, TB6600 drivers, Arduino Mega 2560), a USB/HD camera, and a solenoid-actuated spray subsystem. Full RRL synthesis: [[📚 Literature Review Master]].
 
 ## Statement of the Problem
 Wall painting remains manual, labor-intensive, and hazardous. Existing automated systems use predetermined paths and cannot adapt to wall conditions; existing robotic/AI/vision systems are typically developed in isolation rather than as one integrated pipeline. This study develops an AI-based autonomous wall-painting system to close that gap.

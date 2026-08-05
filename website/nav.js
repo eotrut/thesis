@@ -200,7 +200,7 @@
     if (!mount) return;
     mount.innerHTML =
       '<footer class="site-footer">' +
-      "<p>AURA — AI-Based Autonomous Wall Painting Robot &middot; " +
+      "<p>AURA — Autonomous Unified Robotic Adaptive &middot; " +
       "Bachelor of Science in Computer Engineering &middot; Holy Angel University, Angeles City, Pampanga, Philippines</p>" +
       "</footer>";
   }
