@@ -53,7 +53,7 @@
             A USB/HD camera captures the wall; YOLOv8 outputs a paintable-region mask; OpenCV homography
             calibration (physical corner markers) maps pixel coordinates to millimeters; a raster
             (boustrophedon) planner generates the toolpath; commands stream over pyserial at 115200 baud to
-            an Arduino Mega 2560 + RAMPS 1.4, which drives the NEMA 23 motors and spray subsystem.
+            an Arduino Mega 2560 wired directly to TB6600 drivers, which drive the NEMA 23 motors and spray subsystem.
           </p>
         </div>
       </section>
@@ -68,7 +68,7 @@
           <li>pyserial</li>
           <li>Roboflow (dataset annotation)</li>
           <li>Kaggle Tesla T4 (training)</li>
-          <li>Arduino Mega 2560 + RAMPS 1.4</li>
+          <li>Arduino Mega 2560 + TB6600 drivers (direct-wired, no RAMPS)</li>
         </ul>
       </section>
 
