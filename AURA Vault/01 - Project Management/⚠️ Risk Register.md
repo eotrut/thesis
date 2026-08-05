@@ -16,7 +16,6 @@ status: active
 | R-04 | AI model underfits on limited training data | Technical | H | M | 🟠 High | Transfer learning from ImageNet, data augmentation, use ADE20K wall class, keep task binary if needed | Kurt |
 | R-05 | RTX 3050 4GB VRAM insufficient for model | Technical | M | M | 🟡 Medium | MobileNetV3 backbone, batch size 4, 512×512 input, mixed precision, fallback to U-Net | Kurt |
 | R-06 | Budget overrun on mechanical parts | Budget | M | H | 🟠 High | V-wheels instead of full linear rails, local cut-to-length extrusion, 10% contingency held | Kurt |
-| R-07 | Single capable member = single point of failure | Team | H | H | 🔴 Critical | Document everything in this vault, cross-train David/Usi on assembly + logging, back up code to GitHub | Kurt |
 | R-08 | Adviser rejects methodology | Timeline | L | H | 🟡 Medium | Early adviser meeting (Apr), align Ch.3 with objectives + metrics, iterate before build | Kurt |
 | R-09 | Component shipping delays (Lazada/Shopee) | Timeline | M | M | 🟡 Medium | Order long-lead items in May, prefer local stock, keep buffer weeks in schedule | Kurt |
 | R-10 | TB6600 drivers overheat | Technical | M | M | 🟡 Medium | Heatsinks + fan on drivers, TB6600 current confirmed at 3A (bench tested), de-energize via ENA when idle, avoid stalling motors | Kurt |
@@ -28,8 +27,8 @@ status: active
 | R-16 | Power supply / wiring short or failure | Technical | L | H | 🟡 Medium | Fusing on 24V line, strain relief, terminal blocks, double-check polarity before power-on | Kurt |
 | R-17 | Scope creep (3D, curved walls, mobility) | Timeline | M | M | 🟡 Medium | Hold scope to flat 1m×1m board, 2D, simple murals; defer extras to "future work" | Kurt |
 
-> [!danger] Top 3 to watch
-> **R-01 (spray)**, **R-07 (single point of failure)**, and **R-02 (racking)** are the project killers. Every monthly review starts here.
+> [!danger] Top 2 to watch
+> **R-01 (spray)** and **R-02 (racking)** are the project killers. Every monthly review starts here.
 
 > [!warning] R-02's mitigation moved from hardware to software (2026-08-03)
 > The original mitigation leaned on RAMPS mirroring the two X motors on one axis driver. **RAMPS is no longer in the build** ([[🔌 Electronics & Wiring]]), so nothing enforces lockstep electrically — the Arduino sketch must pulse both X drivers from a single step routine.

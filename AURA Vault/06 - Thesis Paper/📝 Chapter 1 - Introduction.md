@@ -1,13 +1,16 @@
 ---
 tags: [thesis, chapter-1, introduction]
 created: 2026-03-29
-updated: 2026-07-18
+updated: 2026-08-04
 status: synced-with-manuscript
 ---
 # 📝 Chapter 1 — Introduction
 
 > [!info] Sync note (2026-07-18)
 > Re-synced against the **live concept-paper Google Doc** (not the local `aura_thesis_rewrite.md` manuscript) after a full review/fix cycle — see [[📝 Writing Notes & Advisor Feedback]] for the session log and score. Note: when this file was last staged from the device, it still showed a much older, stale version (wrong acronym, K-means/MobileNetV3 references, old RQ/objective wording) — either an Obsidian-git sync pulled back an older revision, or the 2026-07-12 commit didn't fully land. This rewrite reflects the actual current state of the paper; if you notice this note reverting again, flag it so the sync process can be checked.
+
+> [!info] Sync note (2026-08-04)
+> RQ4, Specific Objective 4, and the Rationale paragraph corrected: the toolpath generator emits G-code-style commands **internally**, but there is no RAMPS shield and no G-code-parsing firmware on the Arduino, so those commands are translated into a custom serial protocol (`MOVE`, `SPRAY ON/OFF`, `HOME`) before transmission — matching [[📝 Chapter 3 - Methodology]] §3.6 step 7-8 and the three `.drawio` architecture diagrams (relabeled the same day).
 
 ## Title
 **AURA (AI-Based Autonomous Wall Painting Robot): Integrating Deep Learning Segmentation, Color Recommendation, and Adaptive Spray Control**
@@ -24,7 +27,7 @@ Research questions:
 1. How can a two-dimensional vertical gantry driven by NEMA 23 stepper motors, TB6600 drivers, and an Arduino Mega 2560 be designed to achieve accurate and repeatable motion across a flat wall surface?
 2. How can YOLOv8 instance segmentation, evaluated first in zero-shot mode against public datasets and subsequently fine-tuned when necessary, be used to identify and map paintable regions on wall images captured by a USB high-definition camera?
 3. How can OpenCV-based homography calibration, seeded from physical corner markers on the wall, be used to convert segmentation masks in pixel coordinates into real-world millimeter positions on the wall surface?
-4. How can a raster toolpath generator, driven by the segmentation output, produce spray trajectories transmitted from Python to the Arduino Mega as G-code-style commands over pyserial, and how reliably can the microcontroller execute those commands to drive the stepper motors and the solenoid-controlled spray subsystem?
+4. How can a raster toolpath generator, driven by the segmentation output, produce spray trajectories that are translated into a custom command protocol (MOVE, SPRAY ON/OFF, HOME) and transmitted from Python to the Arduino Mega over pyserial, and how reliably can the microcontroller execute those commands to drive the stepper motors and the solenoid-controlled spray subsystem?
 5. How can an AI-based color recommendation system be developed to generate suitable and visually coherent color combinations for wall painting, and how effectively can those recommendations be reproduced on the physical wall?
 6. How effective is the developed system in terms of: painting accuracy, spray consistency, coverage uniformity, segmentation accuracy, and alignment with the intended design in terms of color and coverage?
 
@@ -45,14 +48,14 @@ Research questions:
 1. Design and develop a 2D XY-gantry robotic system for precise, controlled wall-surface motion.
 2. Develop a deep-learning spatial-segmentation model (YOLOv8/Ultralytics, RTX 3050 + CUDA) for identifying paintable regions, tested zero-shot first and fine-tuned on Roboflow/Kaggle T4 only if needed.
 3. Implement an OpenCV-based homography/scaling calibration routine (physical corner markers) mapping segmentation-mask pixels to real-world mm positions, and generate raster toolpaths from those masks in Python.
-4. Implement an adaptive spray-control system regulating paint flow, actuated by the Arduino Mega and driven by G-code-style commands over pyserial.
+4. Implement an adaptive spray-control system regulating paint flow, actuated by the Arduino Mega and driven by a custom command protocol (MOVE, SPRAY ON/OFF, HOME) transmitted from Python over pyserial, with toolpath data translated from its internal G-code-style representation before transmission.
 5. Integrate computer vision, motion control, color recommendation, and spray mechanisms into a unified automated painting system.
 6. Evaluate the system's performance in terms of motion accuracy, segmentation accuracy, spray consistency, coverage uniformity, and alignment between intended design and painted output.
 7. Develop an AI-based color-recommendation module capable of generating suitable and visually coherent color combinations for wall painting.
 8. Assess the system's capability in executing simple mural designs and multi-region painting tasks.
 
 ## Rationale / Significance
-The core innovation of AURA is not any single subsystem but the **unified pipeline** from perception to physical paint application: a captured wall image is segmented by YOLOv8, calibrated into real-world coordinates through OpenCV homography, converted into a raster toolpath, transmitted to an Arduino Mega via pyserial as G-code-style commands, and executed on a two-axis gantry with adaptive spray control. Prior wall-painting robots have automated the scanning motion (Kumtole et al., 2022; Megalingam et al., 2020; Zhou et al., 2022) and prior deep-learning work has segmented walls accurately (Bjekic et al., 2023; Lin et al., 2025; Zhang et al., 2024), but few systems connect these threads on one reproducible prototype — the gap AURA fills (see [[🔍 Research Gaps & Justification]]).
+The core innovation of AURA is not any single subsystem but the **unified pipeline** from perception to physical paint application: a captured wall image is segmented by YOLOv8, calibrated into real-world coordinates through OpenCV homography, converted into a raster toolpath, translated into a custom command protocol and transmitted to an Arduino Mega via pyserial, and executed on a two-axis gantry with adaptive spray control. Prior wall-painting robots have automated the scanning motion (Kumtole et al., 2022; Megalingam et al., 2020; Zhou et al., 2022) and prior deep-learning work has segmented walls accurately (Bjekic et al., 2023; Lin et al., 2025; Zhang et al., 2024), but few systems connect these threads on one reproducible prototype — the gap AURA fills (see [[🔍 Research Gaps & Justification]]).
 
 Framed through the **Triple Bottom Line**: worker safety (removing humans from hazardous tasks), operational efficiency (lower labor/material cost, less rework), and environmental benefit (reduced paint waste). Aligns with UN SDGs 9 (Industry, Innovation & Infrastructure), 11 (Sustainable Cities & Communities), 12 (Responsible Consumption & Production), and 8 (Decent Work & Economic Growth). Because the system is built entirely from off-the-shelf components and open-source software (Python, PyTorch, Ultralytics, OpenCV, pyserial, Arduino), the design is deliberately reproducible at undergraduate scale rather than positioned as a commercial product.
 

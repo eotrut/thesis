@@ -106,10 +106,10 @@ YOLOv8 masks -> morphological clean (open/close) -> contour extraction ->
 | Wall confidence — test images | 0.88 – 0.94 |
 | Wall confidence — live webcam | 0.80 – 0.93 |
 
-> [!danger] Class-naming collision found in deployment — affects the next labelling round
+> [!danger] Class-naming collision found in deployment — fixed, names finalized
 > The backend matched wall classes by substring. **`non-paintable` contains the substring `paintable`**, so every obstacle was being scored as paintable wall: `wall_coverage` inflated to 0.99, confidence reported an obstacle's score, and the during/post overlays rendered identically. Fixed by vetoing negative keywords first.
 >
-> **Lesson for the 1,000-image set:** never let one class name be a substring of another. Prefer `obstacle` over `non-paintable`, or match class **IDs** rather than names. Worth deciding before the next Roboflow export, since renaming after annotation is expensive.
+> **Decided (2026-08-04): class names stay `wall` and `non-paintable`** for the next Roboflow export — no rename to `obstacle` or similar. The substring collision is already handled in the backend matcher (negative-keyword veto), so it doesn't need to be designed around at the annotation level.
 
 > [!note] Masks are extracted at full resolution
 > Inference uses `retina_masks=True`, so masks come back at input resolution instead of the default 160×160. Mask edges therefore survive into contour extraction and the coordinate mapping — relevant to [[📐 Path Planning & G-code Generation]].

@@ -119,6 +119,7 @@ The custom colour wheel is drawn on a `<canvas>` rather than loaded from a CDN (
 - **Toolpath calibration defaults to the uncalibrated fallback.** Corner markers must be clicked by hand in the Toolpath tab (or posted as `corners`); nothing detects them in the frame automatically, so millimetre figures are scale assumptions until they are supplied.
 - The API is **localhost-only and unauthenticated** — appropriate for a local demo, not for exposure on a network.
 - Test-result images used in the gallery are already-annotated exports, so they are **not valid inputs** for the colour recommender (it samples the burnt-in annotation colour, not the room) — **nor for the toolpath**, where they score the segmentation model against its own output. Real photographs belong in `samples/` (see `samples/README.md`); `backend/tools/test_toolpath.py` reads there first and prints a **NOT A PHOTOGRAPH** banner if it has to fall back to `website/assets/`. **Hold the `samples/` set out of Roboflow training**, or IoU measures memorisation.
+  - **Capture spec for `samples/`:** at least **8–12 photos of a wall not used in the Roboflow training set**, with **all 4 corners marked with an X in masking tape**. The X-marked corners are the physical calibration reference for the homography/scaling step ([[📐 Path Planning & G-code Generation]]), so `/api/toolpath` has real corner points to test against instead of the uncalibrated fallback.
 
 ## Next steps
 

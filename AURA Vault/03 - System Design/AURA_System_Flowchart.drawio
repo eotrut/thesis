@@ -38,11 +38,11 @@
           <mxGeometry x="235" y="840" width="380" height="90" as="geometry" />
         </mxCell>
 
-        <mxCell id="p6" value="&lt;b&gt;Raster Path Planning + G-code Generation&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:12px&quot;&gt;Boustrophedon scan, 10&amp;#8211;20% pass overlap&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=2;fontColor=#000000;fontSize=14;fontFamily=Helvetica;align=center;verticalAlign=middle;spacing=6;" vertex="1" parent="1">
+        <mxCell id="p6" value="&lt;b&gt;Raster Path Planning + Custom Command Generation&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:12px&quot;&gt;Boustrophedon scan, 10&amp;#8211;20% pass overlap&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=2;fontColor=#000000;fontSize=14;fontFamily=Helvetica;align=center;verticalAlign=middle;spacing=6;" vertex="1" parent="1">
           <mxGeometry x="235" y="970" width="380" height="90" as="geometry" />
         </mxCell>
 
-        <mxCell id="p7" value="&lt;b&gt;Stream G-code Commands&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:12px&quot;&gt;pyserial, 115200 baud &amp;mdash; line-by-line, wait for &amp;#39;ok&amp;#39;&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=2;fontColor=#000000;fontSize=14;fontFamily=Helvetica;align=center;verticalAlign=middle;spacing=6;" vertex="1" parent="1">
+        <mxCell id="p7" value="&lt;b&gt;Stream Custom Commands&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:12px&quot;&gt;pyserial, 115200 baud &amp;mdash; line-by-line, wait for &amp;#39;ok&amp;#39;&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=2;fontColor=#000000;fontSize=14;fontFamily=Helvetica;align=center;verticalAlign=middle;spacing=6;" vertex="1" parent="1">
           <mxGeometry x="235" y="1100" width="380" height="100" as="geometry" />
         </mxCell>
 

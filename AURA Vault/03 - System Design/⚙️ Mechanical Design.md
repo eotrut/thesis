@@ -28,6 +28,9 @@ The gantry is a **Cartesian XY** frame: a horizontal X-axis carries a vertical Y
 | **Cost** | Widely available in PH; can be cut-to-length locally to save shipping (see [[💰 Budget Tracker]]). |
 | **Modularity** | T-nut slots allow bolt-on brackets, motor mounts, and rail carriages without machining. |
 
+## Bottom Axis Rail Config — DECIDED: Dual V-Slot (2026-08-04)
+Debate was single V-slot rail (center, bottom axis) vs. two rails (one on each side). **Decided: dual rails** — better load distribution and racking resistance on the bottom axis, at the cost of extra alignment work and hardware. Assembly begins once all parts (including any rail-specific hardware still incoming) have arrived — see [[🔧 Assembly Log]].
+
 ## Y-Axis: Single Motor + Linear Motion
 The Y carriage rides on a **linear rail + carriage** (or V-Slot wheels for budget) and is driven by a single **GT2 belt** from the Y NEMA 23. It holds the spray head at a fixed **Z standoff (~150mm)** from the wall — there is no active Z axis in the prototype.
 

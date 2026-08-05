@@ -17,7 +17,7 @@
         </mxCell>
 
         <!-- B3: AI Processing Unit (condensed) -->
-        <mxCell id="b3" value="&lt;b&gt;AI PROCESSING UNIT&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:11px&quot;&gt;Laptop (RTX 3050, CUDA)&lt;/font&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;YOLOv8 Segmentation &amp;#8594; OpenCV Calibration &amp;#8594;&lt;br&gt;Raster Path Planning &amp;#8594; Color Recommendation &amp;#8594;&lt;br&gt;G-code Command Assembly&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=2;fontColor=#000000;fontSize=13;fontFamily=Helvetica;align=center;verticalAlign=middle;spacing=6;" vertex="1" parent="1">
+        <mxCell id="b3" value="&lt;b&gt;AI PROCESSING UNIT&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:11px&quot;&gt;Laptop (RTX 3050, CUDA)&lt;/font&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;YOLOv8 Segmentation &amp;#8594; OpenCV Calibration &amp;#8594;&lt;br&gt;Raster Path Planning &amp;#8594; Color Recommendation &amp;#8594;&lt;br&gt;Command Assembly (custom protocol)&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=2;fontColor=#000000;fontSize=13;fontFamily=Helvetica;align=center;verticalAlign=middle;spacing=6;" vertex="1" parent="1">
           <mxGeometry x="115" y="190" width="680" height="140" as="geometry" />
         </mxCell>
 
@@ -27,12 +27,12 @@
         </mxCell>
 
         <!-- B5: Control Board -->
-        <mxCell id="b5" value="&lt;b&gt;CONTROL BOARD&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:11px&quot;&gt;Arduino Mega 2560 + RAMPS 1.4&lt;/font&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;Parses G-code &amp;middot; STEP/DIR/EN breakout &amp;middot;&lt;br&gt;relay control (M3/M5) &amp;middot; endstop homing&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=2;fontColor=#000000;fontSize=13;fontFamily=Helvetica;align=center;verticalAlign=middle;spacing=6;" vertex="1" parent="1">
+        <mxCell id="b5" value="&lt;b&gt;CONTROL BOARD&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:11px&quot;&gt;Arduino Mega 2560 (direct-wired, no RAMPS)&lt;/font&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;Parses custom command set &amp;middot; STEP/DIR/EN breakout &amp;middot;&lt;br&gt;relay control (M3/M5) &amp;middot; endstop homing&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=2;fontColor=#000000;fontSize=13;fontFamily=Helvetica;align=center;verticalAlign=middle;spacing=6;" vertex="1" parent="1">
           <mxGeometry x="240" y="370" width="430" height="110" as="geometry" />
         </mxCell>
 
         <!-- B4: Power Supply (right auxiliary) -->
-        <mxCell id="b4" value="&lt;b&gt;POWER SUPPLY&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;24V / 30A DC PSU&lt;/font&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;Feeds TB6600 drivers directly&lt;br&gt;(bypasses RAMPS onboard headers)&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=2;fontColor=#000000;fontSize=12;fontFamily=Helvetica;align=center;verticalAlign=middle;spacing=6;" vertex="1" parent="1">
+        <mxCell id="b4" value="&lt;b&gt;POWER SUPPLY&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;24V / 30A DC PSU&lt;/font&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;Feeds TB6600 drivers directly&lt;br&gt;(no RAMPS shield in this design)&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=2;fontColor=#000000;fontSize=12;fontFamily=Helvetica;align=center;verticalAlign=middle;spacing=6;" vertex="1" parent="1">
           <mxGeometry x="690" y="370" width="170" height="110" as="geometry" />
         </mxCell>
 
@@ -73,7 +73,7 @@
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
 
-        <mxCell id="e5" value="24V Motor Power&#10;(direct feed, bypasses RAMPS)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;dashed=1;strokeColor=#000000;strokeWidth=1.5;fontColor=#333333;fontSize=10;fontStyle=2;fontFamily=Helvetica;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=1;entryY=0.2;entryDx=0;entryDy=0;" edge="1" parent="1" source="b4" target="b7">
+        <mxCell id="e5" value="24V Motor Power&#10;(direct feed, no RAMPS)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;dashed=1;strokeColor=#000000;strokeWidth=1.5;fontColor=#333333;fontSize=10;fontStyle=2;fontFamily=Helvetica;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=1;entryY=0.2;entryDx=0;entryDy=0;" edge="1" parent="1" source="b4" target="b7">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
 

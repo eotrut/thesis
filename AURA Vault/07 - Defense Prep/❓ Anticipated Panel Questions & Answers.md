@@ -1,79 +1,72 @@
 ---
 tags: [defense, qa, panel]
 created: 2026-03-29
+updated: 2026-08-05
 status: active
 ---
 # ❓ Anticipated Panel Questions & Answers
 
 > [!tip] Answer in 3–5 sentences: honest, confident, not defensive. Backed by [[🔍 Research Gaps & Justification]].
 
+> [!info] Sync note (2026-08-05)
+> Full rewrite. Previous version referenced the superseded MobileNetV3+DeepLabV3+ backbone, the incorrect ASTM D4147/D3270 citations, and CIE ΔE\* color-reproduction testing — all removed per [[📝 Chapter 3 - Methodology]] and [[📝 Chapter 1 - Introduction]] sync notes. Answers below reflect current state: YOLOv8n-seg, ASTM D823, no color-reproduction claim, ~46% overall completion, System Integration at 0%.
+
 ## AI Model
-**Q1. Why MobileNetV3 + DeepLabV3+ and not a larger model like ResNet-101?**
-The laptop has a 4GB RTX 3050, which cannot comfortably train heavy backbones. MobileNetV3 gives strong segmentation with far less memory and near-real-time inference, and the task — flat walls — does not need a very deep model. If accuracy falls short, U-Net is our validated fallback.
 
-**Q2. How do you handle limited training data?**
-We use transfer learning from ImageNet and pretrain on ADE20K, which includes a wall class, then fine-tune on a small custom set annotated with LabelMe. We also apply augmentation (flips, jitter, rotation). If multi-class proves unstable, we reduce to a binary paintable/not-paintable mask.
+**Q1. Why YOLOv8 and not a heavier segmentation model?**
+YOLOv8 is COCO-pretrained and runs at real-time speed on the RTX 3050 with CUDA, and critically supports a zero-shot-first evaluation: we test the pretrained weights directly on wall images before paying for any custom dataset or fine-tuning. That's consistent with recent transfer-learning literature showing COCO-pretrained backbones generalize well enough that fine-tuning becomes optional rather than a prerequisite. Custom fine-tuning via Roboflow + Kaggle T4 remains available as a conditional Phase 2, triggered only if zero-shot underperforms.
 
-**Q3. What accuracy is "good enough"?**
-For a prototype we target over 0.65 mIoU and over 75% pixel accuracy. The mask only needs to be accurate enough that the raster planner fills the correct area; small boundary errors are absorbed by 10–20% spray overlap.
+**Q2. What segmentation accuracy have you actually achieved?**
+On a 300-image preliminary run (YOLOv8n-seg, fine-tuned, 2 classes, 70/20/10 split, test n=29): mAP@0.50 = 0.780, mAP@0.50–0.95 = 0.548, precision = 0.845, recall = 0.729. These clear our 0.70 working threshold but are preliminary — the dataset is still expanding toward a 1,000-image target and these numbers are expected to be superseded before final testing.
 
-**Q4. Is K-means really "AI"?**
-K-means is unsupervised machine learning, and combined with color-harmony rules it forms a legitimate recommendation system. We are transparent that it is not a neural network; we chose it because it is implementable within budget and directly fills a gap — no cited painting robot generates harmonious palettes.
+**Q3. Precision is higher than recall — isn't that a weakness?**
+No, it's the safer failure mode for this application. Higher precision than recall means the model under-segments rather than over-segments: it occasionally misses part of a paintable wall (a correctable gap) rather than calling a non-paintable surface — a window, an outlet, trim — paintable, which can't be undone once sprayed. We treat this as a deliberate design read of the numbers, not a shortfall to explain away.
 
-## Simpler Approaches
-**Q5. Why not just pre-program the paths like existing robots?**
-Pre-programming is exactly the limitation we address: those systems cannot adapt to the actual wall or design. Perception lets AURA generate paths from what it sees, which is the core novelty. Pre-programming would defeat the purpose of the study.
+**Q4. How do you handle limited training data?**
+Zero-shot COCO weights are the default and don't need custom data at all. If that underperforms, we fine-tune on a Roboflow-annotated custom set (currently 300 images, targeting 1,000) using a Kaggle Tesla T4, with augmentation — flips, brightness/contrast jitter, slight rotation — applied in Phase 2. The two-phase structure means we only pay the data-collection cost if the pretrained model actually needs it.
 
-**Q6. Why segmentation instead of simple edge detection or thresholding?**
-Thresholding fails under real lighting and texture variation, whereas a learned model generalizes across conditions. Segmentation also extends naturally to multi-region, multi-color painting. It is the more robust and scalable choice.
+## Color Recommendation
 
-## Industrial Applicability
-**Q7. This is not industrial-scale — why does it matter?**
-AURA is a deliberate proof-of-concept, not a product. Its value is demonstrating that an integrated intelligent painting pipeline is achievable at roughly PHP 30,000, which lowers the barrier for future scaling. The scope was declared from the outset.
+**Q5. How does the color recommendation module work, and is it really "AI"?**
+It applies color-harmony rules — complementary, analogous, triadic, split-complementary — computed in CIE LCh(ab) rather than HSV, because LCh is closer to perceptually uniform and separates lightness from chroma so output can be constrained to an interior-paint band without disturbing hue relationships. It's not a neural network, and we're upfront about that; we chose it because it's implementable within budget and fills a real literature gap — none of the cited painting robots reason about color at all, they assume a human picks it.
 
-**Q8. How would this scale to real buildings?**
-The same architecture scales with a larger frame, more training data, and optimized path planning; the perception and control logic are size-independent. Scaling is an engineering effort, not a conceptual barrier. We list this explicitly as future work.
+**Q6. Why is color recommendation part of a painting robot at all?**
+Deciding what to paint is as much a part of autonomy as deciding where. Every prior system we cite assumes a human supplies the color; AURA extends automation to that aesthetic decision, which both differentiates the work and directly addresses a gap identified in our literature review.
 
-## Team
-**Q9. Only one member is technically capable — is that a risk?**
-Yes, and we manage it directly: everything is documented in a structured vault, code is backed up to GitHub, and teammates are cross-trained on assembly and logging. The risk is registered and mitigated rather than ignored.
+**Q7. Is n≥5 evaluators enough to judge color recommendation quality?**
+For a prototype-scale qualitative signal, five raters using a 1–5 scale against ISO/IEC 25010:2011 usability/satisfaction sub-characteristics gives an initial, honestly-reported descriptive result — we're not claiming statistical inference from it. This evaluation hasn't run yet; it's scheduled once the module is finalized, alongside the remaining `samples/` real-photo capture.
 
-## Evaluation
-**Q10. Is n=5 evaluators enough for color recommendation?**
-For a qualitative usability signal at prototype scale, five raters give an initial indication of appeal and suitability; we report it as descriptive, not inferential. We can expand the sample if time allows. The quantitative color-reproduction metric (ΔE) provides an objective complement.
+## System Design & Simpler Approaches
 
-**Q11. How do you measure spray consistency objectively?**
-We photograph painted regions under even lighting and analyze pixel-intensity variance across the area, reporting coverage percentage and uniformity. This mirrors deep-vision inspection methods shown to exceed 95% accuracy in the literature. It removes reliance on subjective judgment.
+**Q8. Why not just pre-program the paths like existing robots?**
+That's exactly the limitation AURA addresses — pre-programmed systems can't adapt to the actual wall or design. Perception lets AURA generate paths from what the camera actually sees, which is the core novelty; pre-programming would defeat the point of the study.
 
-**Q12. How do you ensure motion-accuracy measurements are valid?**
-We command known coordinates and measure the actual head position, computing positional error in millimeters across repeated runs, and report mean and standard deviation. Calibration of steps-per-mm and belt tension precedes testing. We define a threshold (e.g., ≤ 2 mm) for prototype adequacy.
+**Q9. Raster scanning isn't an optimal path strategy — why use it?**
+For flat walls and simple murals it's deterministic and easy to debug, which matters for a solo builder responsible for firmware, AI, and integration simultaneously. Optimal path planning adds failure modes without a clear benefit at this scope, so we explicitly scoped it as future work rather than treating it as an oversight.
 
-## Limitations
-**Q13. Raster scanning is not optimal — why use it?**
-For flat walls and simple murals it is deterministic and easy to debug, which matters for a solo builder. Optimal planning adds failure modes without meaningful benefit at this scope. We note optimized planning as future work.
+**Q10. No active Z-axis — is that a weakness?**
+The spray head operates at a fixed standoff, so an active Z isn't needed for flat walls, which is our declared scope. It's a clear, stated extension point for textured or 3D surfaces, not something we missed.
 
-**Q14. No Z-axis — is that a weakness?**
-The spray head works at a fixed standoff, so an active Z is unnecessary for flat walls. Adding Z is a clear extension for textured or 3D surfaces, which are outside our declared scope. It is a scope choice, not an oversight.
+## Evaluation & Standards
 
-**Q15. What if the spray drips or clogs?**
-This is our highest-risk subsystem and is actively mitigated: water-based acrylic, strained paint, a solenoid mounted near the nozzle, purge cycles before runs, and a spare nozzle. It is tracked in the risk register. We designed the test protocol specifically to characterize and tune it.
+**Q11. How do you measure motion accuracy, and against what standard?**
+We command known coordinates, measure actual head position, and compute positional error in millimeters across repeated runs (mean, SD), benchmarked against ISO 9283:1998's pose accuracy and repeatability criteria for manipulating industrial robots. This hasn't been run yet — it needs the full XY gantry assembled and a working serial link, both still in progress.
 
-## Budget & Feasibility
-**Q16. Is PHP 35,000 realistic for all of this?**
-Yes; our bill of materials totals about PHP 26,000 with a contingency reserve, using local suppliers and clone controllers. Where needed we substitute V-wheels for linear rails and reuse a webcam. The budget has been itemized and cross-checked.
+**Q12. How do you evaluate spray consistency and coverage uniformity?**
+Both are benchmarked against a single corrected standard, ASTM D823-18(2022) — "Standard Practices for Producing Films of Uniform Thickness of Paint, Coatings and Related Products on Test Panels." (We caught and corrected a citation error here during a reference audit: the two standards originally cited, D4147 and D3270, turned out to be real ASTM designations for entirely unrelated things — coil-coating drawdown bars and fluoride content in plant tissue, respectively.) We report uniformity across test panels and percentage of area evenly coated, once system integration reaches physical spray testing.
 
-**Q17. Can you finish by the defense date?**
-Our timeline runs procurement to defense across April–December 2026 with buffers in the highest-risk months. AI training partly parallelizes with the mechanical build. The critical path is the mechanical-to-integration chain, which we start early.
+**Q13. What happened to color-reproduction accuracy (ΔE)?**
+We removed it. AURA doesn't mix or synthesize paint — it recommends a palette from a fixed set of pre-mixed colors — so there's no instrumentable way to compare a "recommended" color against an "applied" one; there's nothing to measure a delta against. What we do evaluate is recommendation quality: whether the palette itself is coherent and suitable, via the Likert study. A future paint-mixing or color-sensing module is the extension that would make ΔE meaningful, and we say so explicitly.
+
+## Current Status & Honesty About the Gap
+
+**Q14. You're presenting before integration is done — what's actually built versus planned?**
+Segmentation, homography calibration, toolpath generation, and color recommendation are built and running behind a Flask API, with segmentation quantitatively verified (Q2). What's not built yet: `serial_ctrl.py`, the Arduino-facing command layer — so right now the toolpath stage still emits raw G-code (`G0`/`G1`/`M3`/`M5`) with nothing converting it to our custom `MOVE`/`SPRAY` command set, since we're not running Marlin or a RAMPS shield. That translation is an open, tracked decision blocking firmware integration, not something we're hiding — System Integration is honestly logged at 0% and Hardware & Mechanical at roughly 30%, with the frame itself not yet assembled.
+
+**Q15. Can you realistically finish by the defense date, given where things stand?**
+The mechanical build is the critical-path item: once the frame is assembled, firmware and integration testing become possible in parallel rather than blocked, which our own progress tracker models as taking the project from ~46% to roughly 66% complete on that step alone. AI/software work is largely decoupled from the mechanical timeline and already sits around 55%. We've built in buffer specifically because hardware is the dependency everything else waits on, and we track it as the top risk rather than assuming it away.
 
 ## Novelty
-**Q18. How is this different from the Arduino wall-painting robot you cited?**
-That system, like others, is pre-programmed with no vision or color intelligence. AURA adds deep-learning segmentation, AI color recommendation, and adaptive spray on the same low-cost backbone. The novelty is the integration, not any single part.
 
-**Q19. What is the single most novel contribution?**
-Unifying perception, color reasoning, motion, and adaptive spray into one automated pipeline at undergraduate cost — a combination none of our cited works achieve. Individually the pieces exist; together, affordably, they do not.
-
-**Q20. What happens if H₁ is not supported?**
-We report results honestly and analyze which subsystems met their targets and which did not, diagnosing causes. Even partial success validates the architecture and yields clear engineering lessons. A rigorous negative or mixed result is still a legitimate contribution.
-
-**Q21. Why is color recommendation part of a painting robot at all?**
-Because deciding *what* to paint is as much a part of autonomy as deciding *where*. Prior robots assume a human picks the color; AURA extends automation to the aesthetic decision. It also differentiates the work and addresses a specific literature gap.
+**Q16. How is this different from the Arduino wall-painting robots you cite?**
+Those systems are pre-programmed with no vision or color intelligence. AURA adds deep-learning segmentation, palette-level color reasoning, and camera-driven adaptive path generation on comparable low-cost hardware. The contribution is the integration of all three on one budget-constrained platform — no cited work combines them.

@@ -67,16 +67,29 @@ status: active
 > Dual-X only prevents racking if the two motors step in lockstep (Risk **R-02**). With no RAMPS to mirror the signal in hardware, this is now the firmware's job: the sketch must pulse both X drivers from one step routine, never as two independent axes. DIR on one side is inverted if the motors face opposite directions — confirm rotation per motor before belting up.
 
 ## 24V Power Distribution
+
+> [!important] PSU terminal / branch assignment — DECIDED (2026-08-04)
+> The procured PSU (24V/30A "power supply jaring" style metal-box unit) has **3 pairs** of DC output screw terminals (3×"-V", 3×"+V"), plus AC input and grounding. These 3 pairs are **not 3 isolated outputs** — they're all internally tied to the same single 24V rail, just broken out onto multiple screws so high total current can be spread across more than one mechanical connection. Confirmed decision on how the 3 pairs are used:
+> - **Pair 1 → both X-axis TB6600 drivers** (X-left + X-right, mirrored). These two always run together, so combining them on one branch reflects the real load — worst case ~3A + 3A = **6A** on this branch.
+> - **Pair 2 → Y-axis TB6600 driver.** ~3A.
+> - **Pair 3 → spray subsystem** (pump/solenoid, via relay), instead of dedicating a 4th pair that doesn't exist. Typically <2A.
+> - Combined worst case ≈ 11A against a 30A-rated supply — comfortable headroom even before accounting for motors rarely drawing full rated current continuously.
+> - **This is parallel wiring, not series** — two loads landing on the same +/- pair are just two parallel taps off the same rail, not a chain. Series would incorrectly split the 24V across the two loads and starve both drivers.
+> - **Wire gauge:** currently using 14–16 AWG stock. Decision: use **14 AWG** on the shared X branch (carries the highest combined current, ~6A) and 16 AWG is fine for Y and spray. Both gauges have solid margin at these currents for short, open-air robot wiring.
+> - **Fusing (still pending, see Safety Considerations below):** recommend fusing each branch separately rather than one fuse for the whole PSU — suggested ~7–8A on the shared X branch, ~4A on Y, and sized to the actual pump/solenoid nameplate draw on the spray branch — so a fault on one branch doesn't take out the others.
+
 ```
-[24V 30A PSU] ──+── TB6600 #1 (X-left)  VCC/GND ──> NEMA23 X-left
-                ├── TB6600 #2 (X-right) VCC/GND ──> NEMA23 X-right
-                └── TB6600 #3 (Y)       VCC/GND ──> NEMA23 Y   [not procured]
+[24V 30A PSU, terminal pair 1] ──+── TB6600 #1 (X-left)  VCC/GND ──> NEMA23 X-left
+                                 └── TB6600 #2 (X-right) VCC/GND ──> NEMA23 X-right   (same pair, parallel — not series)
+[24V 30A PSU, terminal pair 2] ───── TB6600 #3 (Y)       VCC/GND ──> NEMA23 Y   [not procured]
+[24V 30A PSU, terminal pair 3] ───── Relay ──> Pump/Solenoid (spray subsystem)
 [Laptop USB] ─────> Arduino Mega 2560 (5V logic, USB-B)
 Common GND: PSU 0V <─────────────> Arduino GND (signal ground)
 ```
 - Motors get **24V** from PSU through drivers.
 - Arduino powered by **laptop USB** (keeps logic ground referenced to the serial host).
 - **Common ground** the PSU 0V with Arduino GND — required for STEP/DIR signals to work.
+- Spray subsystem now shares the same PSU as the motors (see decision above) rather than needing a separate supply.
 
 ## Serial Communication (Python → Arduino)
 - **USB-B cable: Arduino Mega → laptop**, 115200 baud.
@@ -124,7 +137,7 @@ Arduino Mega (USB from laptop)
 
 ## Safety Considerations
 > [!danger] Before first power-on
-> - **Fuse the 24V line** (e.g., inline 20–25A) close to the PSU.
+> - **Fuse each branch separately** — ~7–8A on the shared X branch, ~4A on Y, and sized to the spray subsystem's actual draw — rather than one fuse for the whole 24V line (see PSU terminal/branch decision above).
 > - **Strain-relieve** all moving cables (drag chain) to prevent fatigue breaks.
 > - **Heatsink + fan** the TB6600 drivers — they get hot at 3A+.
 > - **Double-check polarity** and common ground before connecting motors.

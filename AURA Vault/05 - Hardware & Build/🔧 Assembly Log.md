@@ -22,10 +22,9 @@ status: active
 **Issues encountered:** Open design decision — **V-slot rail configuration for the bottom axis**: debating whether to use **two V-slot rails** (one on each side of the bottom) or **one rail** (center). Trade-offs under consideration:
 - **Two rails (dual bottom):** More stable, better load distribution, reduces racking risk on the bottom axis — but adds cost and complexity in alignment.
 - **One rail (single bottom):** Simpler, cheaper, less alignment work — but higher racking risk if the load isn't centered.
-**How resolved:** Decision pending — to be confirmed before frame assembly begins.
+**How resolved:** **Decided 2026-08-04 — dual V-slot rails** on the bottom axis, for load distribution/racking resistance over the simpler single-rail option (see [[⚙️ Mechanical Design]]).
 **Next steps:**
-  - Resolve single vs. dual bottom V-slot rail question (see [[⚙️ Mechanical Design]])
-  - Begin gantry frame assembly once rail config is locked
+  - Begin gantry frame assembly once all remaining parts (incl. any rail-specific hardware still incoming) have arrived
   - Document frame assembly with photos for Chapter 4 evidence
 **Photos/evidence:** Pending — will photograph build sessions.
 
