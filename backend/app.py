@@ -42,7 +42,11 @@ from flask import Flask, Response, jsonify, request, send_from_directory
 # Make `python backend/app.py` work regardless of the shell's CWD.
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from color_recommender import NEUTRAL_COLORS, recommend_colors  # noqa: E402
+from color_recommender import (  # noqa: E402
+    CATEGORY_BIAS,
+    NEUTRAL_COLORS,
+    recommend_colors,
+)
 from coordinate_mapping import (  # noqa: E402
     WALL_HEIGHT_MM,
     WALL_WIDTH_MM,
@@ -333,6 +337,23 @@ def encode_jpeg_bytes(image_bgr: np.ndarray, quality: int = STREAM_JPEG_QUALITY)
 def normalize_overlay(value: str | None) -> str:
     value = (value or "").strip().lower()
     return value if value in VALID_OVERLAYS else "post"
+
+
+def normalize_category(value: str | None) -> str:
+    """Read the optional "who is this room for?" field.
+
+    Absent, blank or unrecognised all mean "no demographic bias". An unknown key
+    is logged and downgraded rather than rejected: the field only ever tunes a
+    palette, so a stale or mistyped value should cost the user the tuning, not
+    the whole recommendation.
+    """
+    value = (value or "").strip().lower()
+    if not value:
+        return "none"
+    if value not in CATEGORY_BIAS:
+        logger.warning("Unknown category %r — falling back to 'none'.", value)
+        return "none"
+    return value
 
 
 # --------------------------------------------------------------------------- #
@@ -654,10 +675,17 @@ def frame_from_request():
     Returns ``(frame, None)`` on success or ``(None, error_response)`` so the
     caller can `return` the error straight through.
     """
+    # The last resort takes whatever file was sent under an unexpected name, but
+    # never `reference_image`: on /api/recommend-colors that field is the mood
+    # shot, and segmenting it as if it were the room would silently answer a
+    # different question than the one asked.
+    other_files = [
+        f for name, f in request.files.items() if name != "reference_image"
+    ]
     file_storage = (
         request.files.get("image")
         or request.files.get("file")
-        or (next(iter(request.files.values())) if request.files else None)
+        or (other_files[0] if other_files else None)
     )
     if file_storage is None:
         return None, (
@@ -720,6 +748,10 @@ def api_segment():
 # NOT wall, and derives a wall palette from it. Self-contained: it re-runs
 # inference rather than depending on a prior /api/segment call, so it can be
 # exercised on its own.
+#
+# Two optional inputs tune the result and neither is ever fatal:
+#   reference_image — a second upload, blended into the palette seed
+#   category        — a CATEGORY_BIAS key, "who is this room for?"
 # --------------------------------------------------------------------------- #
 
 @app.route("/api/recommend-colors", methods=["POST"])
@@ -731,11 +763,34 @@ def api_recommend_colors():
     if error is not None:
         return error
 
+    # Optional second upload: what the user wants the room to LOOK like, as
+    # opposed to the room photo above, which is what it looks like now. Only the
+    # room photo drives segmentation; this one only tints the palette seed, so an
+    # unreadable file is dropped with a warning instead of failing the request.
+    reference_frame = None
+    reference_file = request.files.get("reference_image")
+    if reference_file is not None:
+        reference_frame = decode_upload(reference_file)
+        if reference_frame is None:
+            logger.warning(
+                "Could not decode reference image %r — continuing without it.",
+                reference_file.filename,
+            )
+
+    category = normalize_category(
+        request.form.get("category") or request.args.get("category")
+    )
+
     try:
         # overlay="pre" — we need the masks, not a rendered overlay, so skip the
         # drawing work entirely.
         result = run_inference(frame, "pre", source="recommend")
-        palette = recommend_colors(frame, result["detections"])
+        palette = recommend_colors(
+            frame,
+            result["detections"],
+            reference_frame_bgr=reference_frame,
+            category=category,
+        )
     except ModelLoadError as exc:
         return jsonify({"success": False, "model_loaded": False, "error": str(exc)}), 503
     except Exception as exc:
@@ -756,6 +811,13 @@ def api_recommend_colors():
         "context_colors": palette["context_colors"],
         "context_source": palette["context_source"],
         "context_pixel_ratio": palette["context_pixel_ratio"],
+        # Same transparency contract as dominant_color: say whether the optional
+        # inputs actually reached the palette, so the UI never implies a
+        # reference image or a demographic lean that was silently dropped.
+        "reference_used": palette["reference_used"],
+        "reference_weight": palette["reference_weight"],
+        "reference_dominant_color": palette["reference_dominant_color"],
+        "category_applied": palette["category_applied"],
         "wall_detected": result["wall_detected"],
         "wall_confidence": result["wall_confidence"],
         "wall_coverage": result["wall_coverage"],

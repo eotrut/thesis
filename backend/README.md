@@ -155,7 +155,27 @@ How it works:
    the whole frame, if the non-wall regions are too small to read.
 2. k-means cluster those pixels in CIE-Lab (perceptual distance) to find the
    room's dominant colour.
-3. Derive six wall colours from it by colour-wheel relationship.
+3. Optionally blend in a reference image's colour and lean the seed toward who
+   the room is for (see the optional fields below).
+4. Derive six wall colours from the resulting seed by colour-wheel relationship.
+
+Optional form fields — both only tune the palette, and neither can fail the
+request; an unusable value is dropped, logged, and reported back as unused:
+
+| Field | Format | Default |
+|---|---|---|
+| `reference_image` | Second multipart image — what the user wants the room to *look like*, not another view of the wall. Its own gated seed is blended into the room's at 70/30 (reference/room) in CIE LCh, hue via circular mean. The weight actually applied comes back as `reference_weight` | none — 100% room photo |
+| `category` | Who the room is for: `child_boy`, `child_girl`, `teen`, `adult_man`, `adult_woman`, `elderly`, `none`. Applies an L\*/C\*/hue delta once to the shared seed, so all six swatches lean together | `none` |
+
+Where the paint band and the sRGB gamut conflict, `_fit_lightness_for_chroma`
+spends up to `CHROMA_LIGHTNESS_GIVEBACK` points of L\* to keep the chroma that
+was asked for, rather than letting `_lch_to_rgb` cut chroma at fixed lightness.
+Without it, two categories requesting C\* 44 and C\* 56 at L\* 78 both clipped to
+the gamut ceiling of 32.9 and rendered as the same colour. Two invariants hold:
+lightness is never spent without gaining chroma, and a larger chroma request
+never yields a smaller result. At cyan-blue hues (~200–230°) the ceiling is below
+both requests at every lightness in the band, so the distinction is genuinely
+unrenderable there — that is sRGB, not a bug.
 
 ```json
 {
@@ -165,20 +185,52 @@ How it works:
                       "relationship": "analogous", "description": "…" } ],
   "dominant_color": { "hex": "#5C78E6", "name": "Slate Blue", "share": 0.4041 },
   "context_colors": [ … ], "context_source": "non_wall_detections",
+  "reference_used": true,
+  "reference_weight": 0.7,
+  "reference_dominant_color": { "hex": "#BE3B5A", "name": "Brick Red", "share": 1.0 },
+  "category_applied": "elderly",
   "wall_detected": true, "inference_ms": 130.0
 }
 ```
 
 `alternatives` is always 5 entries: analogous, triadic, neutral, warm, cool.
 
-Two deliberate behaviours worth knowing:
+`dominant_color` stays the **room's** colour even when a reference is blended in
+— that field answers "what colour is this room", which the reference does not
+change. `reference_used` is false whenever the reference had no readable hue, so
+the UI can say the input was dropped rather than leave the user guessing why it
+changed nothing. The bias constants themselves are cited, hand-derived starting
+points, not fitted values — see `CATEGORY_BIAS` in `color_recommender.py`.
 
-- **Saturation is clamped** to an interior-paint band (S 0.14–0.40, V 0.74–0.93).
-  A raw complementary hue at full saturation is unusable over a whole wall.
-- **Warm/cool start at their anchor hue** (32° / 212°) and are only nudged by
-  the room, rather than interpolating toward it. Interpolating from a blue room
-  toward amber takes the short path through magenta, so the "warm" swatch came
-  back pink — the label has to be true.
+Three deliberate behaviours worth knowing:
+
+- **Lightness and chroma are clamped** to an interior-paint band in CIE LCh —
+  `PAINT_LIGHTNESS` L\* 30–88, `PAINT_CHROMA` C\* 12–60. A raw complementary hue
+  at full chroma is unusable over a whole wall. The hue angle passes through
+  untouched, so the harmony relationship survives the clamp. (Widened from
+  L\* 30–70 / C\* 20–60 on 2026-08-08 — the old ceiling made pastels
+  unreachable.)
+- **Warm/cool start at their anchor hue** (`WARM_ANCHOR_DEG` 48°,
+  `COOL_ANCHOR_DEG` 267°, both LCh) and are only nudged by the room, rather than
+  interpolating toward it. Interpolating from a blue room toward amber takes the
+  short path through magenta, so the "warm" swatch came back pink — the label
+  has to be true.
+- **`recommended.relationship` depends on where the seed came from.** Room photo
+  only → `complementary`, the visual opposite, because the wall has to hold its
+  own against the floor and furniture. Reference image contributed →
+  `reference-match`, sitting *on* the blended hue, because a reference states
+  what the user wants rather than what the wall must contrast with. No usable
+  hue → `warm-neutral`. The five alternatives are unaffected.
+
+The reference seed is also picked differently from the room seed: **share ×
+chroma** rather than share alone, floored at `MIN_REFERENCE_CLUSTER_SHARE`. A
+mood board's backdrop beats its accent on pixel count almost every time, and the
+accent is what the user is pointing at.
+
+Hue blending only averages hues that carry meaning. If the room seed's chroma is
+below `SEED_MIN_CHROMA` its hue is sensor noise, so the blended hue comes from
+the reference alone; `L*` and `C*` still blend at the full weight. Without this, a grey room
+dragged a pink reference 33° toward amber on the strength of a C\* 1.1 centroid.
 
 Colour names come from a curated table matched by nearest Lab distance, and are
 de-duplicated within a palette so no two swatches share a label.

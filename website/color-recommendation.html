@@ -27,6 +27,86 @@
       border: 1px solid rgba(148, 163, 184, 0.45);
     }
 
+    /* ---------------- Optional tuning inputs ----------------
+       The reference image and the "who is this room for?" dropdown both only
+       tune the palette; the room photo above is what actually drives wall
+       detection. Held below the main upload, on a quieter divider and at a
+       smaller type scale, so the required input keeps visual priority. */
+
+    .tuning-section {
+      margin-top: 22px;
+      padding-top: 18px;
+      border-top: 1px solid rgba(148, 163, 184, 0.22);
+      display: flex;
+      gap: 26px;
+      flex-wrap: wrap;
+    }
+
+    .tuning-field {
+      flex: 1 1 260px;
+      min-width: 240px;
+    }
+
+    .tuning-label {
+      display: block;
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 8px;
+    }
+
+    .tuning-hint {
+      font-size: 0.76rem;
+      color: var(--text-secondary);
+      margin: 8px 0 0;
+    }
+
+    .reference-picker {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    #reference-thumb {
+      width: 54px;
+      height: 54px;
+      object-fit: cover;
+      border-radius: 8px;
+      box-shadow: 0 0 0 1px var(--panel-border);
+    }
+
+    .tuning-select {
+      width: 100%;
+      padding: 9px 10px;
+      border-radius: 8px;
+      border: 1px solid var(--panel-border);
+      background: var(--bg);
+      color: var(--text);
+      font-size: 0.9rem;
+      cursor: pointer;
+    }
+
+    .tuning-select:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.25);
+    }
+
+    /* A plain text button — "Remove" is a correction, not an action worth
+       competing with the two real upload buttons above it. */
+    .link-btn {
+      background: none;
+      border: none;
+      padding: 0;
+      color: var(--text-secondary);
+      font-size: 0.78rem;
+      text-decoration: underline;
+      cursor: pointer;
+    }
+
+    .link-btn:hover { color: var(--text); }
+
     /* ---------------- Custom colour picker ---------------- */
 
     .custom-section {
@@ -166,6 +246,44 @@
             <button class="btn btn-secondary" id="camera-btn">Capture from Camera</button>
           </div>
           <input type="file" id="file-input" accept="image/*" style="display: none;" />
+
+          <!-- Optional inputs. Both are palette-only: the room photo above is
+               the one that gets segmented, and neither of these is ever
+               required for a recommendation. -->
+          <div class="tuning-section">
+            <div class="tuning-field">
+              <span class="tuning-label" id="reference-label">Reference image (optional) — what should this room look like?</span>
+              <div class="reference-picker">
+                <img id="reference-thumb" alt="Chosen reference image" style="display: none;" />
+                <!-- The label is a span, not a <label>: it names a button that
+                     opens a hidden file input, so it is described by, not
+                     bound to, the control. -->
+                <button class="btn btn-secondary" id="reference-btn" type="button"
+                        aria-describedby="reference-label reference-hint">Choose Reference</button>
+                <button class="link-btn" id="reference-clear" type="button" style="display: none;">Remove</button>
+              </div>
+              <!-- No percentage quoted here on purpose: the exact blend weight
+                   lives in the backend (REFERENCE_SEED_WEIGHT) and is reported
+                   per-response, so the only place this page states a number is
+                   where it is describing a result it actually received. -->
+              <p class="tuning-hint" id="reference-hint">A mood or style shot, not another photo of this wall. Its colour leads the palette; the room photo adjusts it.</p>
+              <input type="file" id="reference-input" accept="image/*" style="display: none;" />
+            </div>
+
+            <div class="tuning-field">
+              <label class="tuning-label" for="category-select">Who's this room for? (optional)</label>
+              <select class="tuning-select" id="category-select" aria-describedby="category-hint">
+                <option value="none" selected>No preference</option>
+                <option value="child_boy">Child (boy)</option>
+                <option value="child_girl">Child (girl)</option>
+                <option value="teen">Teen</option>
+                <option value="adult_man">Adult — man</option>
+                <option value="adult_woman">Adult — woman</option>
+                <option value="elderly">Elderly</option>
+              </select>
+              <p class="tuning-hint" id="category-hint">Leans the palette lighter, warmer or less saturated based on published colour-preference research.</p>
+            </div>
+          </div>
 
           <div class="inference-status" id="inference-status" style="display: none;">
             <span class="pulse-dot" id="status-dot"></span>
@@ -330,6 +448,12 @@
       var primaryLabel = document.getElementById("primary-label");
       var primaryDesc = document.getElementById("primary-desc");
       var contextNote = document.getElementById("context-note");
+      var referenceBtn = document.getElementById("reference-btn");
+      var referenceInput = document.getElementById("reference-input");
+      var referenceThumb = document.getElementById("reference-thumb");
+      var referenceClear = document.getElementById("reference-clear");
+      var referenceHint = document.getElementById("reference-hint");
+      var categorySelect = document.getElementById("category-select");
 
       var loadedImage = null;
       /* Neutral placeholder until the backend returns a real palette — the page
@@ -342,6 +466,26 @@
          have no mask, in which case the preview tints the whole frame and the
          caption says so rather than implying a detection happened. */
       var wallPolygons = [];
+
+      /* The optional reference image, plus the last room frame we sent. The
+         room frame is kept so changing a tuning input can re-run the palette on
+         the same photo — a stale palette sitting under a dropdown the user just
+         moved reads as the control being broken. */
+      var referenceFile = null;
+      var referenceObjectUrl = null;
+      var lastRoomBlob = null;
+      var lastRoomFilename = null;
+
+      /* Category key -> the phrase used when telling the user what was applied.
+         Mirrors CATEGORY_BIAS in backend/color_recommender.py. */
+      var CATEGORY_PHRASES = {
+        child_boy: "a boy's room",
+        child_girl: "a girl's room",
+        teen: "a teenager's room",
+        adult_man: "an adult man's room",
+        adult_woman: "an adult woman's room",
+        elderly: "an elderly resident's room"
+      };
 
       /* ------------------------------------------------------------------ */
       /* Status line                                                         */
@@ -393,6 +537,76 @@
         }
         fileInput.value = ""; // allow re-selecting the same file
       });
+
+      /* ---- Optional reference image ---- */
+
+      referenceBtn.addEventListener("click", function () {
+        referenceInput.click();
+      });
+
+      referenceInput.addEventListener("change", function () {
+        var file = referenceInput.files && referenceInput.files[0];
+        referenceInput.value = ""; // allow re-selecting the same file
+        if (!file) return;
+        if (!file.type || file.type.indexOf("image/") !== 0) {
+          window.AURA.showToast("Please choose an image file (JPG or PNG).");
+          return;
+        }
+        setReference(file);
+      });
+
+      referenceClear.addEventListener("click", function () {
+        setReference(null);
+      });
+
+      function setReference(file) {
+        // Object URLs are held by the document until revoked; drop the previous
+        // one on every swap so repeated picking does not leak the whole session.
+        if (referenceObjectUrl) {
+          URL.revokeObjectURL(referenceObjectUrl);
+          referenceObjectUrl = null;
+        }
+
+        referenceFile = file || null;
+
+        if (referenceFile) {
+          referenceObjectUrl = URL.createObjectURL(referenceFile);
+          referenceThumb.src = referenceObjectUrl;
+          referenceThumb.style.display = "block";
+          referenceClear.style.display = "inline";
+          referenceBtn.textContent = "Change Reference";
+          referenceHint.textContent =
+            "Using " + referenceFile.name + " — its colour will lead the palette.";
+        } else {
+          referenceThumb.removeAttribute("src");
+          referenceThumb.style.display = "none";
+          referenceClear.style.display = "none";
+          referenceBtn.textContent = "Choose Reference";
+          referenceHint.textContent =
+            "A mood or style shot, not another photo of this wall. Its colour " +
+            "leads the palette; the room photo adjusts it.";
+        }
+
+        refreshRecommendations();
+      }
+
+      categorySelect.addEventListener("change", refreshRecommendations);
+
+      /* Re-derive the palette from the room photo already on screen. No-op
+         before the first upload — these inputs are meant to be set either
+         before or after choosing a photo, and neither order should surprise. */
+      function refreshRecommendations() {
+        if (!lastRoomBlob) return;
+        setStatus("Updating the palette…", "busy");
+        requestRecommendations(lastRoomBlob, lastRoomFilename).then(function (ok) {
+          if (!ok) {
+            setStatus("Could not update the palette. The previous suggestion no longer applies.", "error");
+            return;
+          }
+          setStatus("Palette updated.", "ok");
+          setTimeout(clearStatus, 2500);
+        });
+      }
 
       /* Grab a single still off the robot's webcam and segment it server-side. */
       cameraBtn.addEventListener("click", function () {
@@ -653,9 +867,22 @@
         return new Blob([bytes], { type: mime || "image/jpeg" });
       }
 
+      /** Resolves true on success, false on failure — the tuning inputs re-run
+          this and need to know whether to report an update or an error. */
       function requestRecommendations(blob, filename) {
+        // Remember the room frame so a later change to the reference image or
+        // the category can re-derive the palette without a second upload.
+        lastRoomBlob = blob;
+        lastRoomFilename = filename;
+
         var formData = new FormData();
         formData.append("image", blob, filename || "frame.jpg");
+        // Both optional. Omitting the reference entirely is not the same as
+        // sending an empty field, so only append it when one was chosen.
+        if (referenceFile) {
+          formData.append("reference_image", referenceFile, referenceFile.name);
+        }
+        formData.append("category", categorySelect.value || "none");
 
         return window.AURA.apiFetch("/api/recommend-colors", {
           method: "POST",
@@ -665,12 +892,14 @@
           .then(function (data) {
             if (!data.success) throw new Error(data.error || "Colour recommendation failed.");
             applyRecommendations(data);
+            return true;
           })
           .catch(function (err) {
             paletteRow.innerHTML = "";
             primaryLabel.textContent = "Palette unavailable";
             primaryDesc.textContent = err.message;
             contextNote.textContent = "";
+            return false;
           });
       }
 
@@ -717,14 +946,60 @@
         // Auto-apply the recommendation to the preview.
         selectColor(data.recommended.hex, data.recommended.name, data.recommended.description, true);
 
+        // Always say where the suggestion came from, including which of the
+        // optional inputs actually reached it — the backend reports them as
+        // used/unused precisely so the page never claims a lean it did not get.
         var dom = data.dominant_color;
-        contextNote.textContent = dom
-          ? "Derived from the room's dominant colour " + dom.name + " (" + dom.hex + "), " +
+        var refDom = data.reference_dominant_color;
+        var parts = [];
+
+        if (dom) {
+          parts.push(
+            "Derived from the room's dominant colour " + dom.name + " (" + dom.hex + "), " +
             Math.round(dom.share * 100) + "% of the sampled " +
             (data.context_source === "non_wall_detections"
               ? "non-paintable regions"
-              : "background region") + "."
-          : "No readable room context — showing a neutral starting palette.";
+              : "background region")
+          );
+          if (data.reference_used) {
+            // Weight comes from the response, never hardcoded — the backend
+            // constant is free to change without this line going stale.
+            var weightPct = typeof data.reference_weight === "number"
+              ? " at " + Math.round(data.reference_weight * 100) + "%"
+              : "";
+            parts.push(
+              "blended with your reference image" +
+              (refDom ? " (" + refDom.name + ", " + refDom.hex + ")" : "") +
+              weightPct
+            );
+          }
+        } else if (data.reference_used) {
+          // Room unreadable but the reference was not, so the palette really
+          // does rest on the reference alone — do not call it a neutral
+          // starting palette, which is a different thing entirely.
+          parts.push(
+            "No readable room context — palette derived from your reference image" +
+            (refDom ? " (" + refDom.name + ", " + refDom.hex + ")" : "") + " alone"
+          );
+        } else {
+          parts.push("No readable room context — showing a neutral starting palette");
+        }
+
+        if (!data.reference_used && referenceFile) {
+          // A reference was sent but the backend dropped it — either the file
+          // would not decode or it carried no readable hue. Saying so beats
+          // leaving the user to wonder why their reference changed nothing.
+          parts.push("your reference image could not be used, so this is from the room photo alone");
+        }
+
+        if (data.category_applied && data.category_applied !== "none") {
+          parts.push(
+            "tuned for " +
+            (CATEGORY_PHRASES[data.category_applied] || data.category_applied)
+          );
+        }
+
+        contextNote.textContent = parts.join(" · ") + ".";
       }
 
       function selectColor(hex, name, note, isRecommended) {

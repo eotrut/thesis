@@ -1,7 +1,7 @@
 ---
 tags: [ai, backend, api, web, integration, flask]
 created: 2026-07-31
-updated: 2026-07-31
+updated: 2026-08-08
 status: implemented
 ---
 # 🔌 Backend API & Web Integration
@@ -35,7 +35,7 @@ Verified environment: Python 3.11.5 · torch 2.5.1+cu121 · torchvision 0.20.1+c
 | `/api/stream` | GET | MJPEG webcam stream, `?overlay=pre\|during\|post` |
 | `/api/status` | GET | Model / camera / CUDA state — drives the dashboard cards |
 | `/api/capture` | GET | One segmented still off the webcam |
-| `/api/recommend-colors` | POST | Room-derived wall palette — see [[🎨 Color Recommendation Module]] |
+| `/api/recommend-colors` | POST | Room-derived wall palette. Optional `reference_image` (second multipart image, blended into the seed 70/30) and `category` ("for whom", biases the seed) — see [[🎨 Color Recommendation Module]] |
 | `/api/toolpath` | POST | Multipart image → mm-space serpentine paint path + G-code. Optional `corners` / `wall_corners` form fields switch it from the uncalibrated fallback to a real homography — see [[📐 Path Planning & G-code Generation]] |
 
 **Overlay modes** map to the painting stages: `pre` = raw frame, `during` = paintable wall only (green `#22C55E`), `post` = wall plus non-paintable regions (amber `#EAB308`).
@@ -96,7 +96,7 @@ Four orphaned `app.py` processes from an earlier session were still bound to por
 
 | Page | Uses |
 |---|---|
-| `color-recommendation.html` | `POST /api/segment` on upload · `POST /api/recommend-colors` for the palette · `GET /api/capture` for the camera button · wall polygons clip the colour preview |
+| `color-recommendation.html` | `POST /api/segment` on upload · `POST /api/recommend-colors` for the palette, carrying the optional `reference_image` + `category` inputs · `GET /api/capture` for the camera button · wall polygons clip the colour preview |
 | `camera-view.html` | `GET /api/stream?overlay=…` live · `POST /api/segment` per overlay for uploaded stills · `POST /api/toolpath` in the **Toolpath** tab — canvas render of the path, coverage tiles, G-code listing + download, and click-to-pick corner calibration |
 | `dashboard.html` | `GET /api/status` every 3 s → robot / camera / CUDA cards |
 | `results.html` | Static — real v2 metrics and the six segmentation outputs |
@@ -121,8 +121,22 @@ The custom colour wheel is drawn on a `<canvas>` rather than loaded from a CDN (
 - Test-result images used in the gallery are already-annotated exports, so they are **not valid inputs** for the colour recommender (it samples the burnt-in annotation colour, not the room) — **nor for the toolpath**, where they score the segmentation model against its own output. Real photographs belong in `samples/` (see `samples/README.md`); `backend/tools/test_toolpath.py` reads there first and prints a **NOT A PHOTOGRAPH** banner if it has to fall back to `website/assets/`. **Hold the `samples/` set out of Roboflow training**, or IoU measures memorisation.
   - **Capture spec for `samples/`:** at least **8–12 photos of a wall not used in the Roboflow training set**, with **all 4 corners marked with an X in masking tape**. The X-marked corners are the physical calibration reference for the homography/scaling step ([[📐 Path Planning & G-code Generation]]), so `/api/toolpath` has real corner points to test against instead of the uncalibrated fallback.
 
+## 🧭 Planned endpoint changes (2026-08-08)
+
+> [!info] Panel-recommendation follow-up — one of three now built
+> Full context: [[🎯 Post-Defense Recommendations & Action Items]]. Three features need API surface: reference-image + demographic category on the color module (**done 2026-08-08**), and mask-correction on segmentation/toolpath (still planned).
+
+| Endpoint | Change | For |
+|---|---|---|
+| ✅ `POST /api/recommend-colors` | **Built 2026-08-08.** Optional multipart `reference_image` and optional `category` form field, validated against `CATEGORY_BIAS` by `normalize_category()`. Response gained `reference_used` (bool), `reference_dominant_color` (same shape as `dominant_color`, `null` when unused) and `category_applied` (the category that *actually* ran). Both inputs degrade gracefully — an undecodable reference or an unknown category logs a warning and is dropped, never a 500. | [[🎨 Color Recommendation Module]] § Reference Image + Demographic Category |
+| `POST /api/segment` and/or `POST /api/toolpath` | New optional field carrying a mask correction (add/erase regions) to union/subtract against the model's own mask before it's used downstream. Exact shape (rasterised bitmap vs. stroke list) is an implementation decision. | [[🔮 Segmentation Model]] § Planned: Manual Mask Correction |
+| `GET /api/status` | New `paint_level_pct` field once the load-cell sensor is wired. | [[💧 Spray System Design]] § Planned: Paint-Level Monitoring |
+
 ## Next steps
 
 - [ ] Wire `pyserial` motion commands behind an `/api/paint` endpoint once the gantry runs
 - [x] Feed mask polygons into [[📐 Path Planning & G-code Generation]] to close the segmentation → toolpath gap — done 2026-08-03 via `/api/toolpath`
 - [ ] Re-run and re-record metrics after the ~1,000-image training run
+- [x] Add `reference_image` + `category` handling to `/api/recommend-colors` — done 2026-08-08, see § Planned endpoint changes above
+- [ ] Add mask-correction payload to `/api/segment` / `/api/toolpath` — see § Planned endpoint changes above
+- [ ] Extend `/api/status` with a `paint_level_pct` field once the load-cell sensor is wired — see [[💧 Spray System Design]] § Planned: Paint-Level Monitoring

@@ -7,8 +7,15 @@ Pipeline
    is NOT paintable wall — floor, furniture, ceiling, fixtures.
 2. Discard pixels that carry no usable hue (near-white, near-black, near-grey)
    and cluster what remains to find the room's dominant *chromatic* colour.
-3. Apply colour-wheel relationships to that colour, in CIE LCh, to propose one
-   primary wall colour plus five alternatives.
+3. Optionally pull that seed toward a reference image the user uploaded ("what
+   should this room look like?") and lean it toward who the room is for.
+4. Apply colour-wheel relationships to the resulting colour, in CIE LCh, to
+   propose one primary wall colour plus five alternatives.
+
+Steps 1-2 describe the room as photographed; step 3 is the only place the user's
+own intent enters, and it acts on the shared seed so the whole palette moves
+together. Both of its inputs are optional — with neither supplied the pipeline
+is exactly steps 1, 2, 4, i.e. unchanged.
 
 Why LCh(ab) and not HSL
 -----------------------
@@ -100,21 +107,28 @@ MIN_REGION_PIXELS = 500
 # --------------------------------------------------------------------------- #
 # Interior-paint band, in CIE LCh(ab) units.
 #
-# L* 30-70 keeps a colour off both ends of the lightness range: below ~30 a wall
-# reads as near-black under domestic lighting, above ~70 it washes out to an
-# off-white and the hue relationship stops being visible at all. C* 20-60 keeps
-# it clear of the neutral axis (C* < ~10 is grey) without reaching the
-# poster-paint chroma that becomes oppressive over a whole wall.
+# L* 30-88 keeps a colour off both ends of the lightness range: below ~30 a wall
+# reads as near-black under domestic lighting, above ~88 it is indistinguishable
+# from white and the hue relationship stops being visible at all. C* 12-60 keeps
+# it off the pure neutral axis without reaching the poster-paint chroma that
+# becomes oppressive over a whole wall.
 #
-# NOTE these are deliberately narrower than the range of real emulsion. Many
-# catalogue interior colours sit above L* 70 (pale neutrals) or below C* 20
-# (muted sages and greys); those are reachable through the fixed NEUTRAL_COLORS
-# chips rather than through harmony generation. Widening the band is a
-# one-line change here if the thesis evaluation calls for it.
+# WIDENED 2026-08-08, from L* 30-70 / C* 20-60. The original band was set tight
+# to eliminate washed-out and hyper-saturated failures first, and it did — but it
+# was tighter than real emulsion and the note in the vault said so: measured
+# against this module's OWN name table, Soft Sage Green (C* 16.5) and Slate Grey
+# (C* 4.6) fell under the old chroma floor and Honey Gold (L* 74.6) over the old
+# lightness ceiling. Pastels were unreachable outright: a light pink #F8C8DC
+# (L* 85.2) clamped to #CD9FB2, a dusty mauve. That surfaced as a real complaint
+# the first time a pastel reference image was tried, which is exactly the
+# evidence the old comment here said would justify widening.
+#
+# Still narrower than the full sRGB gamut, and deliberately so — the point of
+# the band is that a wall colour is not a poster colour.
 # --------------------------------------------------------------------------- #
 
-PAINT_LIGHTNESS = (30.0, 70.0)   # L*
-PAINT_CHROMA = (20.0, 60.0)      # C*
+PAINT_LIGHTNESS = (30.0, 88.0)   # L*
+PAINT_CHROMA = (12.0, 60.0)      # C*
 
 # The "neutral" alternative is the near-grey escape hatch, so it is exempt from
 # the chroma floor above by design — forcing C* >= 20 on it would make it a
@@ -238,6 +252,118 @@ NEUTRAL_COLORS: list[dict] = [
     {"hex": "#4A4A4A", "name": "Charcoal"},
     {"hex": "#1C1C1C", "name": "Matte Black"},
 ]
+
+# --------------------------------------------------------------------------- #
+# Demographic bias — "who is this room for?"
+#
+# Deltas applied ONCE to the shared seed (L*, C*, hue) before any harmony rule
+# runs, so all six swatches carry the same lean instead of drifting apart. Same
+# mechanism as WARM_ANCHOR_DEG / COOL_ANCHOR_DEG above, just keyed by category
+# rather than fixed: a positive hue_nudge_deg walks toward the warm anchor, a
+# negative one toward the cool anchor.
+#
+# The deltas are pre-clamp. _paint_color still forces the result back inside
+# PAINT_LIGHTNESS / PAINT_CHROMA, so a bias can shift a palette within the
+# interior-paint band but never out of it — which also means a large delta on an
+# already-extreme seed is partly absorbed by the clamp. That is intended: the
+# band is the harder constraint.
+#
+# These are hand-derived from the direction of published findings, not fitted to
+# data — the same status as PAINT_LIGHTNESS / PAINT_CHROMA, i.e. defensible
+# starting points and an explicit tuning target for the evaluator study. The
+# source literature is largely hotel rooms, nursing homes and residential
+# surveys being generalised to "wall colour for a home room"; state that plainly
+# rather than implying precision.
+#
+# One row group is weaker than that and is marked inline: the child/teen CHROMA
+# values were raised above what Hao et al. actually measured, as a judgement
+# call. Every other number here follows the direction of its citation.
+# --------------------------------------------------------------------------- #
+
+CATEGORY_BIAS: dict[str, dict[str, float]] = {
+    # ------------------------------------------------------------------ #
+    # NOTE on the three young-occupant rows: their CHROMA is a deliberate
+    # design choice, NOT a value derived from the literature — unlike every
+    # other number in this table. Hao et al. (2025) reported children preferring
+    # HSV S ~25/100 at V ~75/100, which converts to roughly L* 72 / C* 20 in the
+    # units used here; these rows sit well above that. Raised 2026-08-08 on the
+    # judgement that a moderate-low backdrop measured in a paediatric-furniture
+    # study reads as flat for a children's bedroom wall.
+    #
+    # What IS still Hao-derived in these rows: the warm hue nudge, the positive
+    # lightness delta, the boy > girl chroma ordering, and the 12-point size of
+    # that gap. Only the common offset moved. Say exactly this if asked at the
+    # defence — the honest answer is that the direction is cited and the
+    # magnitude is ours, and the evaluator study is what settles it.
+    # ------------------------------------------------------------------ #
+    "child_boy":   {"lightness_delta": 8.0,  "chroma_delta": 18.0,  "hue_nudge_deg": 12.0},
+    "child_girl":  {"lightness_delta": 8.0,  "chroma_delta": 6.0,   "hue_nudge_deg": 12.0},
+    # Jiang et al. (2020); Hao et al. (2025): same direction as child, milder
+    # magnitude as age increases. Lifted by half the children's raise (+6) to
+    # keep that documented age gradient monotonic — leaving it at +2 while the
+    # child rows moved to +18/+6 would have made this row's own stated rationale
+    # false. One line to revert if the gradient is not wanted.
+    "teen":        {"lightness_delta": 4.0,  "chroma_delta": 8.0,   "hue_nudge_deg": 6.0},
+    # Bogicevic et al. (2018): men prefer "masculine" — cooler, more saturated.
+    "adult_man":   {"lightness_delta": 0.0,  "chroma_delta": 8.0,   "hue_nudge_deg": -10.0},
+    # Bogicevic et al. (2018): women were equally satisfied with masculine and
+    # feminine schemes, so no directional bias is evidence-backed. Deliberately
+    # a no-op rather than an invented lean.
+    "adult_woman": {"lightness_delta": 0.0,  "chroma_delta": 0.0,   "hue_nudge_deg": 0.0},
+    # Li et al. (2022); Rapuano et al. (2023): lighter, less saturated, warmer.
+    # Torres et al. (2020) complicates this — warm for activity rooms, cool for
+    # bedrooms — but AURA has no room-type context, so this takes the general
+    # (bedroom-leaning) finding. Known limitation, documented in Chapter 5.
+    "elderly":     {"lightness_delta": 6.0,  "chroma_delta": -10.0, "hue_nudge_deg": 10.0},
+    # Default: current behaviour, untouched.
+    "none":        {"lightness_delta": 0.0,  "chroma_delta": 0.0,   "hue_nudge_deg": 0.0},
+}
+
+# Opening clause of the rationale text, per seed origin: (hue found, near-grey
+# seed). The recommendation is only as trustworthy as the user's ability to see
+# what it was built from, so once an optional input moves the seed the sentence
+# has to move with it — "the room's dominant colour" stops being true the moment
+# a reference image is blended in.
+SEED_ORIGIN_PHRASES: dict[str, tuple[str, str]] = {
+    "room": (
+        "The room's dominant colour reads as",
+        "The room reads as close to neutral",
+    ),
+    "blend": (
+        "The blend of your room photo and reference image reads as",
+        "The blend of your room photo and reference image is close to neutral",
+    ),
+    # Room unreadable, reference usable — the palette really does rest on the
+    # reference alone, and saying "blend" here would overstate the room's part.
+    "reference": (
+        "Your reference image reads as",
+        "Your reference image is close to neutral",
+    ),
+}
+
+# Smallest area share a reference cluster may have and still be eligible to seed
+# the palette. Reference seeds are chosen by share x chroma (see
+# ``extract_reference_seed``), and without a floor a few dozen very saturated
+# pixels — a specular highlight, a JPEG ringing artefact — could outscore the
+# colour the image is actually about.
+MIN_REFERENCE_CLUSTER_SHARE = 0.05
+
+# Share of the palette seed contributed by an optional reference ("what should
+# this room look like?") image; the room photo carries the remainder.
+#
+# Reference-dominant on purpose: the room photo already constrains the answer
+# through segmentation and the context breakdown, and a user who bothers to
+# upload a reference is stating an intent the room itself does not express. A
+# 50/50 split made the reference read as ignored on rooms with a strong hue.
+#
+# Raised 0.6 -> 0.7 on 2026-08-08. At 60/40 a warm-toned room still pulled a
+# saturated reference hue about 21 deg toward its own; at 70/30 that drag is
+# ~15 deg, so the reference survives the blend recognisably on rooms that have a
+# strong colour of their own. Note this only affects rooms whose hue is
+# MEANINGFUL — on a neutral room the reference has supplied 100% of the hue
+# since the meaningful-hue check went into _blend_seeds, and this constant then
+# governs L* and C* only.
+REFERENCE_SEED_WEIGHT = 0.7
 
 
 # --------------------------------------------------------------------------- #
@@ -396,6 +522,27 @@ def _shift_hue(hue_deg: float, degrees: float) -> float:
     return (hue_deg + degrees) % 360.0
 
 
+def _circular_mean_hue(hue_a: float, hue_b: float, weight_a: float) -> float:
+    """Weighted circular mean of two hue angles (degrees). weight_a + weight_b == 1.
+
+    Hue is an angle, so the arithmetic mean is wrong across the 0/360 wrap:
+    averaging 350 and 10 gives 180 — cyan — when the answer a person expects is
+    0, red. Converting each hue to a unit vector, averaging the vectors and
+    reading the resulting angle back gets the short way round in every case,
+    which is the standard directional-statistics fix.
+
+    Degenerate case: two hues 180 apart at equal weight cancel to a near-zero
+    vector, and the returned angle is then arbitrary. It cannot arise here —
+    weight_a is REFERENCE_SEED_WEIGHT (0.6), never 0.5 — and even a small weight
+    imbalance resolves it toward the heavier hue.
+    """
+    weight_b = 1.0 - weight_a
+    rad_a, rad_b = np.radians(hue_a), np.radians(hue_b)
+    x = weight_a * np.cos(rad_a) + weight_b * np.cos(rad_b)
+    y = weight_a * np.sin(rad_a) + weight_b * np.sin(rad_b)
+    return float(np.degrees(np.arctan2(y, x)) % 360.0)
+
+
 def _anchor_hue(hue_deg: float, anchor_deg: float, spread_deg: float = 18.0) -> float:
     """A hue that genuinely sits at ``anchor_deg``, nudged by the room's hue.
 
@@ -411,6 +558,87 @@ def _anchor_hue(hue_deg: float, anchor_deg: float, spread_deg: float = 18.0) -> 
     return (anchor_deg + (delta / 180.0) * spread_deg) % 360.0
 
 
+def _max_in_gamut_chroma(lightness: float, hue_deg: float) -> float:
+    """Largest C* that sRGB can actually show at this L* and hue.
+
+    The paint band is a box and the gamut is not, so this is the real ceiling —
+    and it varies enormously with lightness. At hue 10 deg it is C* 83 at L* 55
+    but only C* 33 at L* 78. Anything asked for above the line here is not a
+    colour that exists; it is a coordinate.
+    """
+    lo, hi = 0.0, 150.0
+    for _ in range(24):
+        mid = (lo + hi) / 2.0
+        if _out_of_gamut(_lch_to_linear_rgb(lightness, mid, hue_deg)):
+            hi = mid
+        else:
+            lo = mid
+    return lo
+
+
+# How much L* a colour may give up to keep the chroma it was asked for, when the
+# two cannot both be had. See _fit_lightness_for_chroma.
+CHROMA_LIGHTNESS_GIVEBACK = 12.0
+
+
+def _fit_lightness_for_chroma(lightness: float, chroma: float, hue_deg: float) -> float:
+    """Trade lightness for chroma when the gamut will not give both.
+
+    ``_lch_to_rgb`` resolves an unreachable coordinate by holding L* and h and
+    cutting C*. That is the right default — lightness and the harmony angle are
+    what the palette is built on — but it silently destroys any distinction that
+    lives in chroma alone. Two categories asking for C* 44 and C* 32 at L* 78
+    both clip to the gamut ceiling of 32.9 and render as the same colour, which
+    is exactly how the child_boy/child_girl split disappeared once the L* band
+    was widened enough for their +8 lightness delta to take effect.
+
+    So when chroma is the thing being asked for, spend lightness to buy it:
+    walk L* down (never up, never more than CHROMA_LIGHTNESS_GIVEBACK, never
+    below the paint band) to the highest value that can carry the requested
+    chroma.
+
+    Scanned rather than bisected, deliberately. Available chroma is NOT monotonic
+    in lightness — it rises to a per-hue peak and falls away either side, and
+    that peak sits at a very different L* for yellow than for blue. A bisection
+    assuming monotonicity quietly returned the floor for hues where the trade
+    does not exist, which cost the plain room palettes 12 points of lightness
+    and bought them nothing.
+
+    Two invariants, both learned the hard way:
+
+    **Never pay lightness without gaining chroma.** Returning the floor when the
+    trade does not exist cost the plain room palettes 12 points of lightness for
+    nothing.
+
+    **A larger chroma request must never produce a smaller result.** Falling
+    back to "no trade at all" when the full request is unreachable broke that:
+    child_girl (asking +6) found a lightness that fit and rendered C* 44.7, while
+    child_boy (asking +18) found none, stayed put and clipped to C* 32.6 — the
+    more saturated category came out less saturated. So when the request cannot
+    be met in full, aim at the best chroma the range can actually deliver rather
+    than giving up on the trade entirely.
+    """
+    available_here = _max_in_gamut_chroma(lightness, hue_deg)
+    if available_here >= chroma:
+        return lightness                      # nothing to trade, already fits
+
+    floor = max(PAINT_LIGHTNESS[0], lightness - CHROMA_LIGHTNESS_GIVEBACK)
+    steps = 24
+    candidates = [
+        lightness - (lightness - floor) * (i / steps) for i in range(steps + 1)
+    ]
+    reachable = [(cand, _max_in_gamut_chroma(cand, hue_deg)) for cand in candidates]
+
+    # Aim for the request, or for the best this hue can do in range if that is
+    # less. Capping the target at what is achievable is what keeps the result
+    # monotonic in the request.
+    target = min(chroma, max(available for _, available in reachable))
+    if target <= available_here:
+        return lightness                      # no trade would improve on staying
+
+    return max(cand for cand, available in reachable if available >= target)
+
+
 def _paint_color(
     lightness: float,
     chroma: float,
@@ -419,12 +647,16 @@ def _paint_color(
 ) -> str:
     """Clamp one LCh triple into the interior-paint band and render it to hex.
 
-    The hue angle passes through untouched — clamping only ever moves a colour
-    along the L* and C* axes, so whatever harmony relationship put it at this
-    angle survives the constraint step intact.
+    The hue angle passes through untouched — constraining only ever moves a
+    colour along the L* and C* axes, so whatever harmony relationship put it at
+    this angle survives the constraint step intact.
     """
     lightness = _clamp(lightness, *PAINT_LIGHTNESS)
     chroma = NEUTRAL_CHROMA if neutral else _clamp(chroma, *PAINT_CHROMA)
+    if not neutral:
+        # The neutral swatch is a near-grey by definition, so it has no chroma
+        # worth defending and must keep the lightness it was given.
+        lightness = _fit_lightness_for_chroma(lightness, chroma, hue_deg)
     return _lch_to_hex(lightness, chroma, hue_deg)
 
 
@@ -556,6 +788,118 @@ def _gate_lab(lab: np.ndarray) -> np.ndarray | None:
     return lab[keep]
 
 
+def extract_reference_seed(reference_frame_bgr: np.ndarray) -> dict | None:
+    """Dominant *chromatic* colour of an optional reference / mood image.
+
+    Same three steps the room's palette seed goes through — sample, chromatic
+    gate, cluster — so both seeds are read in the same units by the same
+    estimator and are meaningful to blend against each other.
+
+    ``mask=None`` on purpose: a reference is a mood shot, a catalogue page,
+    somebody else's living room. There is no wall of *ours* in it to segment,
+    and nothing in it to exclude — the whole point is the colour the user liked.
+
+    Returns None when the reference has no usable hue (a near-white or
+    near-black image, or one too small to read), which the caller must treat as
+    "no reference" rather than blending in a noise-derived angle.
+
+    Picks by SALIENCE, not area — this is the one place the two questions come
+    apart. For the room photo, "what colour is this room" is genuinely an
+    area question, and the largest gated cluster is the right answer. A mood
+    board is not describing a room; it is pointing at an accent. On the first
+    real reference tried here — a pink Hello Kitty wall — the wood bed frame and
+    warm mid-tones out-voted the pink 55/45 on area alone, so the "reference"
+    seed came back terracotta and the palette had no pink anywhere in it. The
+    backdrop wins on pixels almost every time; the thing the user actually
+    pointed at wins on colourfulness.
+    """
+    lab = _sample_lab(reference_frame_bgr, None)
+    if lab is None:
+        return None
+
+    gated = _gate_lab(lab)
+    if gated is None:
+        return None
+
+    clusters = _cluster_lab(gated, DEFAULT_K)
+    if not clusters:
+        return None
+
+    # share x chroma: a large muted region and a small vivid one can still beat
+    # each other, which is the behaviour we want, but neither wins on its own.
+    # The share floor stops a stray highlight or a JPEG artefact — a handful of
+    # very colourful pixels — from defining the whole palette.
+    candidates = [c for c in clusters if c["share"] >= MIN_REFERENCE_CLUSTER_SHARE]
+    if not candidates:
+        candidates = clusters
+    return max(candidates, key=lambda c: c["share"] * c["_lch"][1])
+
+
+def _blend_seeds(room_seed: dict, reference_seed: dict) -> dict:
+    """Weighted LCh blend of the room's seed and a reference image's seed.
+
+    L* and C* are plain weighted averages — both are linear magnitudes, so that
+    is well defined. Hue is not: it is an angle, so it goes through
+    ``_circular_mean_hue`` instead.
+
+    The blended triple is rendered through ``_lch_to_rgb`` (gamut-mapped, since
+    a blend of two in-gamut colours can still land outside sRGB) and then read
+    back to LCh, so the seed handed on to ``build_palette`` describes a colour
+    that can actually be displayed rather than a coordinate that cannot.
+
+    Carries no ``share``: a blend of two images has no single area share, and
+    inventing one would put a false percentage in the UI. Shares are reported
+    per-image via ``dominant_color`` / ``reference_dominant_color`` instead.
+    """
+    room_lightness, room_chroma, room_hue = room_seed["_lch"]
+    ref_lightness, ref_chroma, ref_hue = reference_seed["_lch"]
+
+    weight = REFERENCE_SEED_WEIGHT
+    lightness = weight * ref_lightness + (1.0 - weight) * room_lightness
+    chroma = weight * ref_chroma + (1.0 - weight) * room_chroma
+
+    # Only average hues that MEAN something. This is the same test the gate
+    # applies per-pixel and build_palette applies to the centroid, and the blend
+    # was the one place in the module that skipped it: a neutral room reaches
+    # here via the neutral_room_fallback path carrying a centroid whose hue is
+    # sensor noise, and a plain circular mean let that noise drag the reference
+    # by up to 40% of the way. Measured on a grey room (C* 1.1, "hue" 19.5 deg)
+    # against a pink reference: the pink came out 33 deg toward amber, i.e.
+    # salmon, on the strength of an angle that was not a colour at all.
+    room_hue_is_meaningful = room_chroma >= SEED_MIN_CHROMA
+    ref_hue_is_meaningful = ref_chroma >= SEED_MIN_CHROMA
+
+    if room_hue_is_meaningful and ref_hue_is_meaningful:
+        hue = _circular_mean_hue(ref_hue, room_hue, weight)
+    elif ref_hue_is_meaningful:
+        hue = ref_hue          # neutral room — the reference is the only hue here
+    elif room_hue_is_meaningful:
+        hue = room_hue         # near-grey reference; unusual, the gate normally catches it
+    else:
+        # Neither carries a hue. Nothing to average, and build_palette will
+        # detect the low blended chroma and take the warm-neutral path anyway.
+        hue = ref_hue
+
+    rgb = _lch_to_rgb(lightness, chroma, hue)
+    lch = _rgb_to_lch(np.array([rgb], dtype=np.uint8))[0]
+
+    return {
+        "hex": rgb_to_hex(rgb),
+        "name": name_color(rgb),
+        "_rgb": rgb,
+        "_lch": (float(lch[0]), float(lch[1]), float(lch[2])),
+    }
+
+
+def _public_color(cluster: dict) -> dict:
+    """A clustered colour stripped to the fields the API reports.
+
+    The ``_rgb``/``_lch`` working values stay internal — they are numpy-derived
+    tuples the JSON layer has no use for, and the UI reads colours as hex.
+    """
+    return {"hex": cluster["hex"], "name": cluster["name"], "share": cluster["share"]}
+
+
 def build_context_mask(detections: list[dict], height: int, width: int) -> tuple[np.ndarray, str]:
     """Select the pixels that represent the ROOM rather than the wall.
 
@@ -591,7 +935,12 @@ def build_context_mask(detections: list[dict], height: int, width: int) -> tuple
 # Colour-theory palette generation
 # --------------------------------------------------------------------------- #
 
-def build_palette(dominant_rgb, dominant_name: str) -> dict:
+def build_palette(
+    dominant_rgb,
+    dominant_name: str,
+    category: str = "none",
+    seed_origin: str = "room",
+) -> dict:
     """One complementary primary + five relationship-based alternatives.
 
     Every relationship is a rotation of the seed's LCh hue angle. Lightness and
@@ -599,6 +948,17 @@ def build_palette(dominant_rgb, dominant_name: str) -> dict:
     precisely because LCh keeps those axes independent of hue — the same reason
     the old HSL implementation could not do this without also disturbing the
     hue it had just computed.
+
+    ``category`` is a CATEGORY_BIAS key ("who is this room for?"). Unknown keys
+    fall back to "none", i.e. no bias, so a stale value from a caller can never
+    break a recommendation.
+
+    ``seed_origin`` ("room" | "blend" | "reference") says what the seed MEANS,
+    and two things depend on it: whether the recommended swatch opposes the seed
+    or sits on it (see the block below), and the wording of the rationale text —
+    once a reference image contributes to the seed, the palette is not derived
+    from the room's colour alone and the explanation must not keep claiming it
+    was.
     """
     lightness, chroma, hue = (
         float(v) for v in _rgb_to_lch(np.array([dominant_rgb], dtype=np.uint8))[0]
@@ -614,12 +974,33 @@ def build_palette(dominant_rgb, dominant_name: str) -> dict:
     # still produce a wall colour with visible colour in it.
     base_chroma = max(chroma, PAINT_CHROMA[0])
 
-    if hue_is_meaningful:
-        # Complementary — 180 deg on the perceptual wheel, i.e. the true visual
-        # opposite of the room's dominant hue.
-        recommended_hue = _shift_hue(base_hue, 180.0)
-        recommended_relationship = "complementary"
-    else:
+    # Demographic lean, applied once to the shared seed and therefore inherited
+    # by every swatch below — the recommended colour and all five alternatives
+    # shift together instead of the palette losing its internal coherence.
+    #
+    # Deliberately AFTER hue_is_meaningful is decided: whether the room has a
+    # readable hue is a property of the photograph, and a category can bias that
+    # hue but must not be able to conjure one out of a neutral room.
+    bias = CATEGORY_BIAS.get(category, CATEGORY_BIAS["none"])
+    lightness += bias["lightness_delta"]
+    base_chroma += bias["chroma_delta"]
+    base_hue = _shift_hue(base_hue, bias["hue_nudge_deg"])
+
+    # --------------------------------------------------------------------- #
+    # Which way to point the recommendation depends on what the seed MEANS.
+    #
+    # A room photo answers "what must this wall hold its own against?", so the
+    # useful answer is the visual opposite — the wall separates from the floor
+    # and furniture instead of sinking into them. A reference image answers the
+    # opposite question, "what do I want this room to look like?", and rotating
+    # THAT by 180 deg turns the user's stated intent into the one colour the
+    # palette is guaranteed not to contain. Uploading a pink reference returned
+    # teal, every time, by construction. Same seed pipeline, opposite intent, so
+    # the rotation has to be conditional on where the seed came from.
+    # --------------------------------------------------------------------- #
+    seed_follows_reference = seed_origin in ("blend", "reference")
+
+    if not hue_is_meaningful:
         # No hue to oppose, so there is nothing for a 180 deg rotation to mean.
         # Rotating anyway is what made a grey room recommend a cold blue: the
         # fallback hue is the WARM anchor, and its complement is slate. Sit on
@@ -627,6 +1008,17 @@ def build_palette(dominant_rgb, dominant_name: str) -> dict:
         # printed alongside it.
         recommended_hue = base_hue
         recommended_relationship = "warm-neutral"
+    elif seed_follows_reference:
+        # Sit ON the reference's hue. The alternatives below still fan out
+        # around it — including the triadic and cool options — so contrast is
+        # one click away rather than forced on someone who asked for pink.
+        recommended_hue = base_hue
+        recommended_relationship = "reference-match"
+    else:
+        # Complementary — 180 deg on the perceptual wheel, i.e. the true visual
+        # opposite of the room's dominant hue.
+        recommended_hue = _shift_hue(base_hue, 180.0)
+        recommended_relationship = "complementary"
 
     recommended_hex = _paint_color(lightness, base_chroma, recommended_hue)
 
@@ -670,9 +1062,25 @@ def build_palette(dominant_rgb, dominant_name: str) -> dict:
             }
         )
 
-    if hue_is_meaningful:
+    # Name the seed for what it actually is. With a reference image in the mix
+    # the palette is no longer derived from the room alone, and the rationale is
+    # the one place the user reads where a suggestion came from.
+    seed_phrase, neutral_phrase = SEED_ORIGIN_PHRASES.get(
+        seed_origin, SEED_ORIGIN_PHRASES["room"]
+    )
+
+    if hue_is_meaningful and seed_follows_reference:
         rationale = (
-            f"The room's dominant colour reads as {dominant_name} ({rgb_to_hex(dominant_rgb)}). "
+            f"{seed_phrase} {dominant_name} ({rgb_to_hex(dominant_rgb)}). "
+            f"This suggestion stays on that hue rather than opposing it — a reference image says "
+            f"what you want the room to look like, so the palette follows it. Lightness and "
+            f"colourfulness are held in the interior-paint range so it still reads as a wall "
+            f"colour over a large area. The alternatives below fan out around the same hue if "
+            f"you want more contrast than a match."
+        )
+    elif hue_is_meaningful:
+        rationale = (
+            f"{seed_phrase} {dominant_name} ({rgb_to_hex(dominant_rgb)}). "
             f"This suggestion sits opposite it on the perceptual colour wheel (CIE LCh), so the "
             f"wall separates cleanly from the floor and furniture instead of blending into them. "
             f"Lightness and colourfulness are held in the interior-paint range so the contrast "
@@ -680,7 +1088,7 @@ def build_palette(dominant_rgb, dominant_name: str) -> dict:
         )
     else:
         rationale = (
-            f"The room reads as close to neutral ({dominant_name}, {rgb_to_hex(dominant_rgb)}), "
+            f"{neutral_phrase} ({dominant_name}, {rgb_to_hex(dominant_rgb)}), "
             f"so there is no strong hue to complement. This is a soft warm tone that adds "
             f"colour without competing with the existing furnishings."
         )
@@ -696,7 +1104,12 @@ def build_palette(dominant_rgb, dominant_name: str) -> dict:
     }
 
 
-def recommend_colors(frame_bgr: np.ndarray, detections: list[dict]) -> dict:
+def recommend_colors(
+    frame_bgr: np.ndarray,
+    detections: list[dict],
+    reference_frame_bgr: np.ndarray | None = None,
+    category: str = "none",
+) -> dict:
     """Full recommendation for one segmented frame.
 
     ``detections`` are the dicts produced by ``app.parse_detections`` and must
@@ -707,6 +1120,13 @@ def recommend_colors(frame_bgr: np.ndarray, detections: list[dict]) -> dict:
     shows. The palette seed comes from a second, LCh-gated pass that answers
     "what colour is this room", which is a different question whenever the room
     is mostly neutral, i.e. almost always.
+
+    ``reference_frame_bgr`` is an optional second upload — what the user wants
+    the room to look like, not another view of the wall. When present and
+    readable, its own gated seed is blended into the room's at
+    ``REFERENCE_SEED_WEIGHT`` before any harmony rule runs. ``category`` is a
+    CATEGORY_BIAS key. Both are optional and default to today's behaviour
+    exactly; neither can fail the request, only be reported as unused.
     """
     height, width = frame_bgr.shape[:2]
     mask, source = build_context_mask(detections, height, width)
@@ -718,6 +1138,18 @@ def recommend_colors(frame_bgr: np.ndarray, detections: list[dict]) -> dict:
     gated = None if lab is None else _gate_lab(lab)
     seed_colors = [] if gated is None else _cluster_lab(gated, DEFAULT_K)
 
+    # Read the reference before deciding on the room seed: if the room turns out
+    # to be unreadable, a usable reference is still a far better basis for a
+    # palette than the hardcoded warm neutral.
+    reference_seed = (
+        None if reference_frame_bgr is None else extract_reference_seed(reference_frame_bgr)
+    )
+
+    # Report the category that was really applied, not the one that was asked
+    # for — build_palette silently ignores an unknown key, and the response must
+    # not claim a bias that did not happen.
+    category_applied = category if category in CATEGORY_BIAS else "none"
+
     if seed_colors:
         seed = seed_colors[0]
         seed_source = "chromatic_pixels"
@@ -727,10 +1159,38 @@ def recommend_colors(frame_bgr: np.ndarray, detections: list[dict]) -> dict:
         # path rather than rotating a meaningless hue.
         seed = context_colors[0]
         seed_source = "neutral_room_fallback"
+    elif reference_seed is not None:
+        # Nothing readable in the room, but the user did supply a reference. Use
+        # it on its own rather than discarding an input they explicitly gave.
+        palette = build_palette(
+            reference_seed["_rgb"],
+            reference_seed["name"],
+            category=category_applied,
+            seed_origin="reference",
+        )
+        palette.update(
+            {
+                "dominant_color": None,
+                "context_colors": [],
+                "context_source": "unavailable",
+                "context_pixel_ratio": 0.0,
+                "seed_source": "reference_only",
+                "reference_used": True,
+                # 1.0, not REFERENCE_SEED_WEIGHT: there was no readable room
+                # seed to blend against, so the reference carried the palette
+                # outright. Reporting 0.7 here would be a lie the UI repeats.
+                "reference_weight": 1.0,
+                "reference_dominant_color": _public_color(reference_seed),
+                "category_applied": category_applied,
+            }
+        )
+        return palette
     else:
         # Nothing readable at all — recommend from a warm neutral and say so.
         fallback_rgb = (200, 190, 178)
-        palette = build_palette(fallback_rgb, name_color(fallback_rgb))
+        palette = build_palette(
+            fallback_rgb, name_color(fallback_rgb), category=category_applied
+        )
         palette.update(
             {
                 "dominant_color": None,
@@ -738,20 +1198,33 @@ def recommend_colors(frame_bgr: np.ndarray, detections: list[dict]) -> dict:
                 "context_source": "unavailable",
                 "context_pixel_ratio": 0.0,
                 "seed_source": "unavailable",
+                "reference_used": False,
+                "reference_weight": None,
+                "reference_dominant_color": None,
+                "category_applied": category_applied,
             }
         )
         return palette
 
-    palette = build_palette(seed["_rgb"], seed["name"])
+    # A reference with no usable hue is reported as unused rather than blended:
+    # its seed would be an angle read off near-white or near-black pixels, which
+    # is exactly the noise the chromatic gate exists to keep out of the palette.
+    reference_used = reference_seed is not None
+    palette_seed = _blend_seeds(seed, reference_seed) if reference_used else seed
+
+    palette = build_palette(
+        palette_seed["_rgb"],
+        palette_seed["name"],
+        category=category_applied,
+        seed_origin="blend" if reference_used else "room",
+    )
     palette.update(
         {
-            # The colour the palette was actually derived from, so the rationale
-            # text and the swatch the UI shows next to it stay consistent.
-            "dominant_color": {
-                "hex": seed["hex"],
-                "name": seed["name"],
-                "share": seed["share"],
-            },
+            # The room's own dominant colour, with the area share it was read
+            # from. Kept as the room's even when a reference is blended in — the
+            # blend is reported separately, and this field answers "what colour
+            # is this room", which the reference does not change.
+            "dominant_color": _public_color(seed),
             "context_colors": [
                 {k: v for k, v in c.items() if not k.startswith("_")}
                 for c in context_colors
@@ -761,6 +1234,14 @@ def recommend_colors(frame_bgr: np.ndarray, detections: list[dict]) -> dict:
                 float(np.count_nonzero(mask)) / float(height * width), 4
             ),
             "seed_source": seed_source,
+            "reference_used": reference_used,
+            # The weight actually applied, so the UI never has to hardcode a
+            # number that can drift out of step with this module.
+            "reference_weight": REFERENCE_SEED_WEIGHT if reference_used else None,
+            "reference_dominant_color": (
+                _public_color(reference_seed) if reference_used else None
+            ),
+            "category_applied": category_applied,
         }
     )
     return palette
