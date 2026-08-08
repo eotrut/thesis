@@ -1,7 +1,7 @@
 ---
 tags: [project-management, progress, tracker]
 created: 2026-08-04
-updated: 2026-08-04
+updated: 2026-08-08
 status: active
 ---
 # 📊 Progress Completion Tracker
@@ -51,3 +51,5 @@ Assumes **Hardware & Mechanical → 100%** (frame assembled, all axes wired) onl
 ## Update Log
 - **2026-08-04** — Note created. Current-state and mechanical-completion scenario estimates added.
 - **2026-08-04** — Thesis Writing & Defense Prep raised from ~25% to **75%**, as a standalone call — not tied to any assumption about Hardware, Firmware, AI, or Integration progress. Overall current estimate revised from ~35–40% to **~46%**; mechanical-done scenario revised from ~55–60% to **~66%**. Removed the earlier combined "mechanical + writing" scenario since Thesis Writing is now already at 75% in the current-state baseline, making that scenario identical to the mechanical-only one above.
+- **2026-08-08** — Proposal defense held; panel gave six follow-up recommendations (color module reference-image + demographic input, mask-correction brush, paint-level sensor, gantry casters, adaptive PWM spray control). Logged as new [[📋 Master Task Tracker]] Phase 6. Not yet reflected in the percentages above — this is added scope, not completed progress; Kurt to reassess category %s once implementation starts.
+- **2026-08-08** — First of the six Phase 6 items **closed the same day**: the colour module's reference-image + demographic-category inputs are built, wired through `/api/recommend-colors` and the colour page, and verified against the loaded model ([[🎨 Color Recommendation Module]] § As-built record). **Percentages left unchanged, deliberately** — this closes added scope rather than pre-existing scope, and the constants are still untuned against real photos. Kurt's call whether AI & Software moves off ~55%.

@@ -1,7 +1,7 @@
 ---
 tags: [system-design, ai, software]
 created: 2026-03-29
-updated: 2026-07-12
+updated: 2026-08-08
 status: synced-with-manuscript
 ---
 # 🧠 AI & Software Design
@@ -58,7 +58,7 @@ Converts each calibrated region mask to a raster (boustrophedon) coordinate list
 > `toolpath_generator.events_to_gcode()` produces `G0`/`G1`/`M3`/`M5` lines today. `serial_ctrl.py` is not written, so nothing converts them to `MOVE`/`SPRAY`. Whether to add that translation or replace the emitter is an **open decision** blocking firmware work — see [[🖥️ Serial Communication Protocol]].
 
 ### Module 5 — Color Recommendation (planned `color_rec.py` → built as `backend/color_recommender.py`)
-Applies color-harmony rules (complementary/analogous/triadic/split-complementary) to dominant colors extracted from a reference image, optionally augmented with a deep-learning palette recommender consistent with the literature (Yuan et al., 2021; Wu et al., 2023). Harmony angles are computed in **CIE LCh(ab)**, not HSV, and output is constrained to an interior-paint L\*/C\* band. Details in [[🎨 Color Recommendation Module]].
+Applies color-harmony rules (complementary/analogous/triadic/split-complementary) to dominant colors extracted from the room photo, optionally augmented with a deep-learning palette recommender consistent with the literature (Yuan et al., 2021; Wu et al., 2023). Harmony angles are computed in **CIE LCh(ab)**, not HSV, and output is constrained to an interior-paint L\*/C\* band. Since 2026-08-08 two optional inputs adjust the shared seed *before* harmony generation: a **second reference image** (blended 70/30, reference-dominant) and a **"for whom" demographic category** (evidence-based L\*/C\*/hue bias). Details in [[🎨 Color Recommendation Module]].
 
 ### Module 6 — Serial Controller (`serial_ctrl.py` — **not built**, Phase 2)
 `pyserial` custom command queue at 115200 baud: send one command (`MOVE X Y` / `SPRAY ON` / `SPRAY OFF` / `HOME`), block for `ok` response, timeout/retry once, halt + spray-off on second failure. **Not standard G-code** — Arduino runs a custom sketch that parses these commands and drives the TB6600 drivers directly. Details in [[🖥️ Serial Communication Protocol]].

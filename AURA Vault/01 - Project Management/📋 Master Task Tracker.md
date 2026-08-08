@@ -28,8 +28,8 @@ status: active
 - [ ] Purchase pump and solenoid valve (tentative)
 - [ ] Assemble X-axis base rail
 - [ ] Assemble Y-axis vertical column
-- [ ] Wire motors to drivers
-- [ ] Wire drivers directly to Arduino Mega (no RAMPS) — X-left on pins 3/4/5 bench tested 2026-08-03; X-right and Y pending
+- [x] Wire motors to drivers
+- [x] Wire drivers directly to Arduino Mega (no RAMPS) — X-left on pins 3/4/5 bench tested 2026-08-03; X-right and Y pending
 - [x] Test motor movement (no load) — single motor bench tested 2026-08-03 at 3A, 1/32 microstepping, ENA confirmed active-low
 - [ ] Calibrate limit switches / homing
 
@@ -80,8 +80,22 @@ status: active
 - [ ] Complete Chapter 5 (Discussion)
 - [ ] Compile full references in APA format
 - [ ] Internal review / proofreading
-- [ ] Submit draft to adviser
-- [ ] Revise based on feedback
-- [ ] Prepare defense presentation
-- [ ] Conduct mock defense
+- [x] Submit draft to adviser
+- [x] Revise based on feedback
+- [x] Prepare defense presentation
+- [x] Conduct mock defense
+- [x] Proposal defense (2026-08-08) — accepted, with six follow-up recommendations, see Phase 6 below
 - [ ] Final defense
+
+## Phase 6 — Post-Defense Enhancements (Panel Recommendations, 2026-08-08)
+> Full context: [[🎯 Post-Defense Recommendations & Action Items]]
+
+- [x] Color module: accept a second reference-image upload, blend its extracted seed with the room's own — **done 2026-08-08** (70/30 LCh blend, circular-mean hue), see [[🎨 Color Recommendation Module]] § As-built record
+- [x] Color module: add demographic "for whom" category input with evidence-based LCh bias — **done 2026-08-08** (`CATEGORY_BIAS`, 7 categories, dropdown), see [[🎨 Color Recommendation Module]] and new RRL ([[📚 Literature Review Master]] Theme 7, [[📝 Chapter 2 - Review of Related Literature]] § 2.8b)
+- [ ] Color module: eyeball the seven categories against **real** room photos and tune the bias constants — blocked on the `samples/` shoot; only synthetic frames tested so far
+- [ ] Camera view: add + erase mask-correction brush on Upload/Playback and Toolpath modes — see [[🔮 Segmentation Model]]
+- [ ] Backend: extend `/api/segment`/`/api/toolpath` with the mask-correction payload — see [[🔌 Backend API & Web Integration]] (the `/api/recommend-colors` half of this item shipped 2026-08-08)
+- [ ] Hardware: source and mount a load cell + HX711 under the paint reservoir, calibrate, wire a low-paint alert into `/api/status` — see [[💧 Spray System Design]]
+- [ ] Hardware: source and mount locking swivel casters + leveling feet — see [[⚙️ Mechanical Design]]
+- [ ] Firmware/protocol: add a PWM spray-duty command to the serial protocol and Arduino sketch — see [[💧 Spray System Design]], [[🖥️ Serial Communication Protocol]]
+- [ ] Update Chapter 2 RRL in the actual manuscript — **now unblocked**, the demographic-category feature shipped 2026-08-08 — see [[📝 Chapter 2 - Review of Related Literature]] § 2.8b

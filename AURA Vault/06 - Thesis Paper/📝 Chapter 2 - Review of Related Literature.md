@@ -1,7 +1,7 @@
 ---
 tags: [thesis, chapter-2, literature]
 created: 2026-03-29
-updated: 2026-07-18
+updated: 2026-08-08
 status: synced-with-manuscript
 ---
 # 📝 Chapter 2 — Review of Related Literature
@@ -33,5 +33,24 @@ Tiboni et al. (2022, *PaintNet*) learns multi-path spray trajectories from 3D po
 ## 2.8 AI-Based Color Recommendation
 Yuan et al. (2021, *InfoColorizer*) and Wu et al. (2023, AIGC-empowered color matching) show deep-learning palette recommendation is mature and user-validated. Koh (2023), Li et al. (2025), and Ananya et al. (2025) extend the space (palette→interior GANs; ML/DL color-harmony scoring; PCA+clustering+SVM aesthetic classification). **Gap AURA fills:** none of the painting-robot literature treats color recommendation as a first-class module — AURA does.
 
+## 2.8b Color Preference by Demographic (Age & Gender) — ready to insert (2026-08)
+
+> [!success] Gate cleared — the feature shipped 2026-08-08
+> Added to the vault 2026-08-08 following a proposal-defense panel recommendation to condition the color recommendation module on who the room is for. Full literature synthesis: [[📚 Literature Review Master]] Theme 7.
+>
+> The condition on inserting this into the actual Chapter 2 document was "once the feature itself is implemented" — that happened the same day ([[🎨 Color Recommendation Module]] § As-built record), so **this section is now cleared to go into the manuscript**. Every study cited below maps to a row of the shipped `CATEGORY_BIAS` table, which is the honest version of this claim: the constants are hand-derived from these findings' *direction*, not fitted to their data.
+
+Bogicevic et al. (2018) provide the most direct experimental evidence for gender-linked color preference in a room-design context: across 762 participants, male guests preferred "masculine" hotel-room color schemes while female guests rated masculine and feminine schemes equally. Age- and gender-specific preference is further quantified for children by Hao et al. (2025), whose 3–15-year-old sample preferred warm hues at moderate-low saturation (≈25/100) and high value (≈75/100), with boys preferring higher saturation than girls and preference for saturation decreasing with age — and extended into adolescence (12–16) by Jiang et al. (2020). Elderly preference is independently corroborated by three studies: Torres et al. (2020) tie warm-versus-cool preference to room activity (warm for activity rooms, cool for bedrooms, both genders), Li et al. (2022) find low-saturation, warm, bright tones preferred across 306 Chinese urban elderly respondents, and Rapuano et al. (2023) find the elderly weight color/material more heavily than younger groups when emotionally evaluating a space. Broader survey evidence (Voordt et al., 2017; Huang et al., 2009; Yıldırım et al., 2007) confirms age and gender are statistically significant factors in interior color preference across general populations, though the specific direction and magnitude vary with study population, room type, and culture.
+
+**Gap AURA fills:** existing AI-based color-recommendation literature (§ 2.8) — and every painting-robot system reviewed in this chapter — generates or applies color without conditioning on occupant demographics. AURA's color recommendation module **takes a "for whom" input that biases the CIE LCh seed** (L\*, C\*, and hue angle) before harmony generation runs, making demographic personalization a first-class, cited design decision rather than an unexplained UI option. Alongside it, an optional reference image lets the occupant's own stated intent enter the same seed, blended 70/30 against the room's measured colour.
+
+> [!warning] Wording caution when this goes into the manuscript
+> Write the bias as **directionally** grounded in the evidence above, not as derived from it. The deltas are hand-set from the direction of published findings, not fitted to their data — and for `child_boy` / `child_girl` / `teen` the **saturation level was deliberately set above** what Hao et al. report (their HSV S ≈ 25/100 ≈ C\* 20; AURA uses C\* 44–56), as a design judgement that a wall at the cited level reads flat for a children's room.
+>
+> A sentence like *"biases the harmony parameters per the evidence above"* would over-claim for those three rows. Safe phrasing: the **direction** of each bias (warmer, lighter, more or less saturated, by age and gender) follows the cited findings, while the **magnitudes** are design parameters this study sets and the ISO/IEC 25010 evaluator rating is intended to inform. Belongs in Chapter 5 limitations too. Full record: [[🎨 Color Recommendation Module]] § Second fix round.
+
 ## 2.9 Summary of Gaps
 No cited system unifies (a) deep-learning perception, (b) calibrated coordinate mapping, (c) AI color recommendation, and (d) adaptive spray control on one reproducible, undergraduate-scale prototype. Full gap-by-gap justification: [[🔍 Research Gaps & Justification]]. Feeds into methodology: [[📝 Chapter 3 - Methodology]].
+
+> [!note] § 2.9 revision now due
+> The condition was "once § 2.8b's feature actually ships" — it shipped 2026-08-08, so the summary sentence above should gain a **fifth** item: demographic-conditioned colour personalization. Left unedited here because the summary is a single hand-written sentence Kurt should rephrase himself rather than have a clause bolted on. See [[🎨 Color Recommendation Module]] § As-built record and [[🎯 Post-Defense Recommendations & Action Items]].
