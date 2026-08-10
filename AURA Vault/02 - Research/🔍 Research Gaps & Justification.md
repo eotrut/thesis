@@ -41,7 +41,7 @@ status: synced-with-manuscript
 ## Gap 6 — Painting-robot evaluation is rarely benchmarked against recognized external standards (new, 2026-07)
 **The gap:** most cited wall-painting prototypes report internally-defined accuracy claims rather than measuring against recognized industry/technical standards.
 **Proof:** none of the mechanical wall-painting robots reviewed (Kumote et al., 2022; Patil, 2021; Megalingam et al., 2020; Sowmya et al., 2024) cite a positioning, coating, or quality standard.
-**How AURA fills it:** AURA's evaluation is explicitly framed against ISO 9283:1998 (positional accuracy), the COCO evaluation protocol (segmentation), ASTM D4147/D3270 (spray consistency/coverage uniformity), ISO/IEC 25010:2011 (color-recommendation quality), and IEEE 1872-2015 (system integration) — see [[📝 Chapter 3 - Methodology]].
+**How AURA fills it:** AURA's evaluation is explicitly framed against ISO 9283:1998 (positional accuracy), the COCO evaluation protocol (segmentation), ASTM D823 (spray consistency/coverage uniformity), ISO/IEC 25010:2011 (color-recommendation quality), and IEEE 1872-2015 (system integration) — see [[📝 Chapter 3 - Methodology]].
 
 > [!note] One-sentence justification
 > AURA is justified because it is the first *undergraduate-affordable* system to unify YOLOv8-based wall perception, calibrated coordinate mapping, AI color recommendation, and adaptive spray into one automated painting pipeline evaluated against recognized external standards — a combination no cited work achieves.

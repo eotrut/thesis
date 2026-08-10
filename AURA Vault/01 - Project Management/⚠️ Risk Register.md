@@ -26,6 +26,8 @@ status: active
 | R-15 | Positional error exceeds acceptable threshold | Technical | M | H | 🟠 High | Microstepping **1/32 (bench confirmed → 160 steps/mm)**, belt tension, calibrate steps/mm, closed-loop homing each run | Kurt |
 | R-16 | Power supply / wiring short or failure | Technical | L | H | 🟡 Medium | Fusing on 24V line, strain relief, terminal blocks, double-check polarity before power-on | Kurt |
 | R-17 | Scope creep (3D, curved walls, mobility) | Timeline | M | M | 🟡 Medium | Hold scope to flat 1m×1m board, 2D, simple murals; defer extras to "future work" | Kurt |
+| R-18 | PWM-driven solenoid wears out faster or overheats at high switching frequency | Technical | L | M | 🟡 Medium | Keep switching frequency in the manufacturer-rated range, monitor coil temperature during extended runs, fall back to plain on/off if wear becomes an issue | Kurt |
+| R-19 | Load cell reading drifts or false-triggers the low-paint alert (vibration, uncalibrated reservoir swap) | Technical | M | L | 🟡 Medium | Moving-average smoothing on the raw reading, re-tare on reservoir swap, treat the alert as advisory not a hard stop until validated | Kurt |
 
 > [!danger] Top 2 to watch
 > **R-01 (spray)** and **R-02 (racking)** are the project killers. Every monthly review starts here.
@@ -34,3 +36,6 @@ status: active
 > The original mitigation leaned on RAMPS mirroring the two X motors on one axis driver. **RAMPS is no longer in the build** ([[🔌 Electronics & Wiring]]), so nothing enforces lockstep electrically — the Arduino sketch must pulse both X drivers from a single step routine.
 >
 > This does not raise the likelihood on paper, but it does move the mitigation into code that **does not exist yet**, where a bug produces exactly the failure the dual-motor scheme was bought to prevent. Treat "both X drivers driven from one step routine" as an explicit firmware acceptance test, and verify with the dual-corner homing check (X-min and X-max must trigger within tolerance of each other) before trusting any positional measurement.
+
+> [!note] R-17 clarification (2026-08-08) — casters are not the "mobility" this risk flags
+> The panel recommended locking casters/stoppers for the gantry frame (see [[🎯 Post-Defense Recommendations & Action Items]]). That's **manual transport aid for the already-planned multi-position workflow** ([[⚙️ Mechanical Design]]), not the autonomous/self-propelled "mobility" R-17 correctly holds out of scope. R-17's mitigation (hold scope to flat, manually-positioned painting) still stands. New rows R-18/R-19 above cover the two other panel-recommended additions (PWM spray control, load-cell paint monitoring).

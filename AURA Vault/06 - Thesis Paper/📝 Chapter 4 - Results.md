@@ -47,10 +47,10 @@ status: partial — 4.2 has preliminary data
 > - Re-run after the ~1,000-image training round and replace the numbers above
 
 ## 4.3 Spray Consistency Results
-*(Uniformity per pass, benchmarked against ASTM D4147; representative photos.)*
+*(Uniformity per pass, benchmarked against ASTM D823; representative photos.)*
 
 ## 4.4 Coverage Uniformity Results
-*(% area evenly painted per ASTM D3270; gap/overlap analysis.)*
+*(% area evenly painted per ASTM D823; gap/overlap analysis.)*
 
 ## 4.5 Color Recommendation Quality Results
 *(Evaluator 1–5 ratings, n≥5, framed against ISO/IEC 25010:2011 usability/satisfaction sub-characteristics; mean + distribution.)*

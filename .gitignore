@@ -80,3 +80,6 @@ website/model/*.pt
 *.blg
 *.fls
 *.fdb_latexmk
+
+# --- Claude Code local settings (personal, not shared) ---
+.claude/settings.local.json

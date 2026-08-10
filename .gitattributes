@@ -1,0 +1,21 @@
+# Normalize line endings to LF in the repository regardless of the checkout OS.
+* text=auto eol=lf
+
+# Known binary types — never touch these
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.pptx binary
+*.docx binary
+*.dotx binary
+*.xlsx binary
+*.pt binary
+*.pth binary
+*.onnx binary
+*.zip binary
+*.woff binary
+*.woff2 binary
+*.ttf binary

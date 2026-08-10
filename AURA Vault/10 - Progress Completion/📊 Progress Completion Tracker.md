@@ -1,7 +1,7 @@
 ---
 tags: [project-management, progress, tracker]
 created: 2026-08-04
-updated: 2026-08-08
+updated: 2026-08-10
 status: active
 ---
 # 📊 Progress Completion Tracker
@@ -53,3 +53,4 @@ Assumes **Hardware & Mechanical → 100%** (frame assembled, all axes wired) onl
 - **2026-08-04** — Thesis Writing & Defense Prep raised from ~25% to **75%**, as a standalone call — not tied to any assumption about Hardware, Firmware, AI, or Integration progress. Overall current estimate revised from ~35–40% to **~46%**; mechanical-done scenario revised from ~55–60% to **~66%**. Removed the earlier combined "mechanical + writing" scenario since Thesis Writing is now already at 75% in the current-state baseline, making that scenario identical to the mechanical-only one above.
 - **2026-08-08** — Proposal defense held; panel gave six follow-up recommendations (color module reference-image + demographic input, mask-correction brush, paint-level sensor, gantry casters, adaptive PWM spray control). Logged as new [[📋 Master Task Tracker]] Phase 6. Not yet reflected in the percentages above — this is added scope, not completed progress; Kurt to reassess category %s once implementation starts.
 - **2026-08-08** — First of the six Phase 6 items **closed the same day**: the colour module's reference-image + demographic-category inputs are built, wired through `/api/recommend-colors` and the colour page, and verified against the loaded model ([[🎨 Color Recommendation Module]] § As-built record). **Percentages left unchanged, deliberately** — this closes added scope rather than pre-existing scope, and the constants are still untuned against real photos. Kurt's call whether AI & Software moves off ~55%.
+- **2026-08-10** — Code audit on the colour recommender found and fixed two defects: hardcoded palette-alternative offsets that had drifted once the lightness band widened, and zero real test coverage across three prior fix rounds (now covered by an 11-invariant suite, `backend/tools/test_color_recommender.py`). Fixed and pushed as `286515e`. **Recommendation, not yet applied: leave AI & Software at ~55%** — this is bug-fixing and hardening of already-counted shipped scope (the 2026-08-08 demographic feature), not new functionality, so it doesn't obviously move the needle the way new scope would. The one argument for a small bump is that a real automated test suite now exists where none did before — Kurt's call, per the standing rule above.

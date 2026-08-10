@@ -1,7 +1,7 @@
 ---
 tags: [ai, segmentation, deep-learning]
 created: 2026-03-29
-updated: 2026-07-30
+updated: 2026-08-08
 status: training-in-progress
 ---
 # 🔮 Segmentation Model
@@ -115,3 +115,21 @@ YOLOv8 masks -> morphological clean (open/close) -> contour extraction ->
 > Inference uses `retina_masks=True`, so masks come back at input resolution instead of the default 160×160. Mask edges therefore survive into contour extraction and the coordinate mapping — relevant to [[📐 Path Planning & G-code Generation]].
 
 The segmentation mask is also **load-bearing for colour recommendation**, not just path planning: [[🎨 Color Recommendation Module]] clusters the *non-wall* regions to read the room's colour, which is only possible because the model separates wall from non-paintable.
+
+---
+
+## 🖌️ Planned: Manual Mask Correction (Brush Tool) (2026-08-08)
+
+> [!info] Panel recommendation, not yet implemented
+> Full context: [[🎯 Post-Defense Recommendations & Action Items]]. Kurt's initial read was that manual mask correction is too much human intervention for an "AI-controlled" pipeline — panel was fine with it as a human-in-the-loop safety net, and it's a reasonable stopgap while the dataset grows from the current 300 images (Run 2, mAP@0.50 0.780) toward the ~1,000-image target logged above.
+
+**Decided scope:** add + erase brush, available on both the Upload/Playback segmentation preview and the Toolpath planner in `camera-view.html` (not the Live Feed stream, which is server-side MJPEG with no per-frame correction hook).
+
+**Where this sits in the pipeline:** correction happens *after* YOLOv8 inference, *before* the mask is consumed downstream — i.e. it patches the output of this module, the same mask that already feeds both [[🎨 Color Recommendation Module]] (non-wall region clustering) and [[📐 Path Planning & G-code Generation]] (raster toolpath generation). A correction made here should, in principle, benefit both consumers — see the open question below about whether corrections should carry across pages.
+
+**Proposed mechanics (implementation detail, not decided):**
+- Client-side canvas overlay on top of the returned mask polygons, brush/lasso strokes recorded as added or removed regions.
+- On submit, the correction is rasterised and unioned (add) / subtracted (erase) against the model's own wall mask before it's sent onward — either client-side before the `/api/toolpath` call, or server-side via a new correction payload field. See [[🔌 Backend API & Web Integration]] § Planned endpoint changes.
+- Toolpath mode is where a missed region has real consequence (it drives the actual G-code), so that's the higher-priority half of the two views to get right first.
+
+**Open questions:** logged in [[🎯 Post-Defense Recommendations & Action Items]] — whether a correction made in Upload/Playback should carry into Toolpath automatically, and exact brush UX (radius, undo, etc.).

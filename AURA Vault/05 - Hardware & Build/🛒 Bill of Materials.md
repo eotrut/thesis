@@ -30,3 +30,13 @@ status: active
 | | | | **TOTAL** | **26,090** | | **Under PHP 35,000 ✅** |
 
 > [!tip] If tight: drop full MGN rails to V-wheels (−~3,000), reuse a webcam (−800), salvage a 24V PSU (−1,300). Buffer to spare: ~PHP 8,900 vs cap.
+
+## 🧭 Planned additions — panel recommendations (2026-08-08)
+
+| Item | Spec | Qty | Unit (PHP) | Total (PHP) | Source | Notes |
+|---|---|---|---|---|---|---|
+| Load cell (bar-type, 5–10 kg) + HX711 module | weight-based paint level sensor | 1 | 250 | 250 | Shopee PH | Panel-recommended — see [[💧 Spray System Design]] § Planned: Paint-Level Monitoring |
+| Locking swivel casters + leveling feet | rated for frame weight (TBD) | set | 1,200 | 1,200 | Lazada / hardware | Panel-recommended — see [[⚙️ Mechanical Design]] § Planned: Mobility |
+
+> [!note] Not yet in the TOTAL above
+> The two rows above (~₱1,450 combined estimate, see [[🎯 Post-Defense Recommendations & Action Items]]) aren't folded into the 26,090 total yet — caster load rating depends on the frame's actual assembled weight, not yet measured. Even fully added, this stays well under the ₱35,000 cap (~₱7,460 headroom instead of ~₱8,910).

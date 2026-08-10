@@ -89,3 +89,16 @@ A printed/bracketed mount fixes the nozzle to the Y carriage, aimed perpendicula
 | Belt slack → lost steps (R-15) | Proper tensioners, GT2 (low stretch), tune steps/mm |
 | Frame not square | Measure diagonals, use corner brackets, re-check after tensioning |
 | Vibration at speed | Lower acceleration, add feet/damping, brace long spans |
+
+---
+
+## 🛞 Planned: Mobility — Casters & Leveling Feet (2026-08-08)
+
+> [!info] Panel recommendation, not yet implemented
+> Full context and the R-17 scope-creep distinction: [[🎯 Post-Defense Recommendations & Action Items]] § Gantry Mobility.
+
+**Recommended:** locking **swivel casters**, load-rated for the assembled frame weight (not yet measured — needs weighing once the frame is built, see [[🔧 Assembly Log]]), **plus separate drop-down leveling feet**. Casters carry the frame only in transit; the leveling feet drop down and bear the actual load once the gantry is positioned, so the frame sits rigid and square while painting rather than resting on four unlocked wheels. This matters specifically because of **R-02 (racking)** — the dual-X-motor lockstep scheme depends on a square, stable frame, and an accelerating gantry sitting on unloaded casters would reintroduce exactly the wobble that scheme exists to prevent.
+
+**Ties into the existing multi-position workflow, not a new one:** the X-axis rail is intentionally shorter than most walls (§ Travel Range — Locked, above); AURA already plans to physically slide the gantry to a new position and re-calibrate for wider walls. Casters + leveling feet just make that already-planned manual reposition easier — they don't turn AURA into a self-propelled or continuously-mobile system. See the R-17 clarification linked above.
+
+**Not yet decided:** exact caster count/placement and load rating — blocked on the frame's actual assembled weight. **BOM impact:** see [[🛒 Bill of Materials]].

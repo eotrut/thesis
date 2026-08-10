@@ -50,7 +50,7 @@ Bogicevic et al. (2018) provide the most direct experimental evidence for gender
 > A sentence like *"biases the harmony parameters per the evidence above"* would over-claim for those three rows. Safe phrasing: the **direction** of each bias (warmer, lighter, more or less saturated, by age and gender) follows the cited findings, while the **magnitudes** are design parameters this study sets and the ISO/IEC 25010 evaluator rating is intended to inform. Belongs in Chapter 5 limitations too. Full record: [[🎨 Color Recommendation Module]] § Second fix round.
 
 ## 2.9 Summary of Gaps
-No cited system unifies (a) deep-learning perception, (b) calibrated coordinate mapping, (c) AI color recommendation, and (d) adaptive spray control on one reproducible, undergraduate-scale prototype. Full gap-by-gap justification: [[🔍 Research Gaps & Justification]]. Feeds into methodology: [[📝 Chapter 3 - Methodology]].
+No cited system unifies (a) deep-learning perception, (b) calibrated coordinate mapping, (c) AI color recommendation, (d) demographic-conditioned color personalization, and (e) adaptive spray control on one reproducible, undergraduate-scale prototype. Full gap-by-gap justification: [[🔍 Research Gaps & Justification]]. Feeds into methodology: [[📝 Chapter 3 - Methodology]].
 
-> [!note] § 2.9 revision now due
-> The condition was "once § 2.8b's feature actually ships" — it shipped 2026-08-08, so the summary sentence above should gain a **fifth** item: demographic-conditioned colour personalization. Left unedited here because the summary is a single hand-written sentence Kurt should rephrase himself rather than have a clause bolted on. See [[🎨 Color Recommendation Module]] § As-built record and [[🎯 Post-Defense Recommendations & Action Items]].
+> [!success] § 2.9 revised 2026-08-10
+> Added item (d), demographic-conditioned color personalization, now that § 2.8b's feature has shipped. This is a draft rephrasing — Kurt should read it against his own voice before it goes into the live Google Doc concept paper (this vault note is not the submission copy).

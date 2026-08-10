@@ -56,3 +56,35 @@ The **solenoid valve** provides fast **on/off** control of paint flow, toggled b
 
 ## Known Risks
 - Paint drying in nozzle (R-14) · pump air-lock · overspray · post-M5 dribble. All logged in [[⚠️ Risk Register]].
+
+---
+
+## 🪫 Planned: Paint-Level Monitoring (2026-08-08)
+
+> [!info] Panel recommendation, not yet implemented
+> Full context and option comparison: [[🎯 Post-Defense Recommendations & Action Items]] § Paint-Level Indicator.
+
+**Recommended: load cell + HX711 amplifier** under the reservoir, not an optical/ultrasonic or float-switch alternative — short version: a load cell doesn't care that the fluid is opaque pigmented paint, and it reuses the weight-based measurement principle the flow-rate calibration protocol above already relies on (§ Flow Rate & Calibration).
+
+**Design sketch:**
+- Mount: reservoir sits on (or hangs from) a small platform bearing on the load cell — needs to happen after the reservoir/mount is finalized, so this is blocked on that mechanical decision.
+- Calibration: tare with an empty reservoir, single-point calibration against a known paint mass (or volume × density, water-based acrylic ≈1.2–1.3 g/mL).
+- Thresholds: two levels — a **low-paint warning** (placeholder 20%) surfaced as a dashboard/toast notice, and a **critical** level (placeholder 5%) that should probably pause the run rather than just notify, given a dry-nozzle run risks R-14 (clogging). Exact thresholds are a tuning call once real flow-rate numbers exist.
+- Noise: a gantry in motion vibrates — smooth the raw reading (moving average) before it drives a threshold, or a transient dip during a spray pass could false-trigger.
+- API surface: `/api/status` gains a `paint_level_pct` field — see [[🔌 Backend API & Web Integration]] § Planned endpoint changes.
+
+**BOM impact:** load cell (e.g. a small bar-type cell, ≤5–10 kg range) + HX711 breakout — see [[🛒 Bill of Materials]].
+
+## 🎛️ Planned: Adaptive Spray Control — PWM (2026-08-08)
+
+> [!info] Panel recommendation, not yet implemented
+> Full context: [[🎯 Post-Defense Recommendations & Action Items]] § Adaptive Spray Control. Current "adaptive" behaviour is binary: the solenoid above is switched fully on/off, timed to gantry position (§ Solenoid Valve Role). The panel wants genuine flow-rate modulation, not just positional on/off.
+
+**Decided direction: PWM time-proportioning on the existing solenoid.** No new hardware — rapidly pulse the same 12/24V solenoid at a duty cycle within a short fixed cycle period (well above any visible flutter or droplet-pattern artifact) to approximate a continuous average flow rate. This is the same principle precision-agriculture PWM spray-nozzle controllers use to vary flow at constant pressure.
+
+**What this touches:**
+- **Serial protocol:** the current custom command set (`MOVE` / `SPRAY ON` / `SPRAY OFF` / `HOME`, see [[🖥️ Serial Communication Protocol]]) needs a duty-cycle-capable spray command, e.g. `SPRAY PWM {0-100}`, alongside or replacing the binary `SPRAY ON/OFF`. This is an *additive* change to a protocol that already has one open, undecided item (the G-code ↔ custom-command bridge) — land it wherever that decision lands.
+- **Firmware:** the Arduino sketch needs to generate the pulse train on the solenoid pin — well within Arduino timer/PWM capability at solenoid-appropriate switching frequencies.
+- **Toolpath generator:** `toolpath_generator.py` would need to compute a duty-cycle value per segment rather than a flat on/off flag. Simplest starting point: uniform full duty during normal passes (functionally identical to today's on/off), with the real "adaptive" payoff as a natural follow-on — reduced duty near obstacle-adjacent rows to cut overspray (the spray-width-tapering idea Kurt flagged as not yet decided). Building PWM support makes that tapering nearly free to add once the base case works.
+
+**Not yet decided:** whether edge-tapering ships alongside the PWM base case or as a later pass — see [[🎯 Post-Defense Recommendations & Action Items]].

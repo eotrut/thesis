@@ -14,7 +14,7 @@ status: pending
 
 ## Suggested Structure
 1. **Restate purpose** briefly and the hypotheses (H₀/H₁).
-2. **Interpret each metric** against its reference standard (ISO 9283:1998, COCO protocol, ASTM D4147/D3270, ISO/IEC 25010:2011, IEEE 1872-2015 — see [[📝 Chapter 3 - Methodology]]).
+2. **Interpret each metric** against its reference standard (ISO 9283:1998, COCO protocol, ASTM D823, ISO/IEC 25010:2011, IEEE 1872-2015 — see [[📝 Chapter 3 - Methodology]]).
 3. **Integration findings** — how well perception, motion, color recommendation, and spray worked together.
 4. **Limitations.**
 5. **Future work.**

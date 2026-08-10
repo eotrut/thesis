@@ -1,15 +1,26 @@
 ---
 tags: [defense, qa, panel]
 created: 2026-03-29
-updated: 2026-08-05
+updated: 2026-08-10
 status: active
 ---
 # ❓ Anticipated Panel Questions & Answers
 
 > [!tip] Answer in 3–5 sentences: honest, confident, not defensive. Backed by [[🔍 Research Gaps & Justification]].
 
+> [!info] Sync note (2026-08-10)
+> Added Q7b — the panel is now as likely to probe the color module's *implementation constants* (lightness band, alternative offsets) as its literature basis (Q7). Prompted by a code audit that fixed two defects: hardcoded offsets drifting once the lightness band widened, and zero test coverage across three prior fix rounds. See [[🎨 Color Recommendation Module]] § Second fix round.
+
 > [!info] Sync note (2026-08-05)
 > Full rewrite. Previous version referenced the superseded MobileNetV3+DeepLabV3+ backbone, the incorrect ASTM D4147/D3270 citations, and CIE ΔE\* color-reproduction testing — all removed per [[📝 Chapter 3 - Methodology]] and [[📝 Chapter 1 - Introduction]] sync notes. Answers below reflect current state: YOLOv8n-seg, ASTM D823, no color-reproduction claim, ~46% overall completion, System Integration at 0%.
+
+> [!info] Sync note (2026-08-06)
+> Added Q0 as a likely opening/motivation question, compressed from Chapter 1's Background of the Study and Rationale/Significance sections plus Gap 1 and Gap 3 in [[🔍 Research Gaps & Justification]].
+
+## Opening / Motivation
+
+**Q0. Why did you choose wall-painting as your research area?**
+Manual wall painting carries real occupational risk — VOC exposure linked to respiratory impairment, plus fall and musculoskeletal risk from working at height, which is exactly why DOLE and RA 11058 regulate it. Prior wall-painting robots already proved the physical task can be automated, but they run on fixed, pre-programmed paths with no perception of the actual wall or design. At the same time, deep-learning segmentation and AI color recommendation had matured as separate research threads but rarely closed the loop into a physical actuator. We chose this space because it let us unify those threads — perception, calibration, adaptive spray, and color reasoning — into one reproducible, undergraduate-budget system, which no cited work does end to end.
 
 ## AI Model
 
@@ -35,6 +46,13 @@ Deciding what to paint is as much a part of autonomy as deciding where. Every pr
 
 **Q7. Is n≥5 evaluators enough to judge color recommendation quality?**
 For a prototype-scale qualitative signal, five raters using a 1–5 scale against ISO/IEC 25010:2011 usability/satisfaction sub-characteristics gives an initial, honestly-reported descriptive result — we're not claiming statistical inference from it. This evaluation hasn't run yet; it's scheduled once the module is finalized, alongside the remaining `samples/` real-photo capture.
+
+**Q7b. Where do the module's specific numeric constants — the lightness band, the alternative-palette offsets — come from?**
+Same honesty standard as the demographic bias table in § 2.8b: the direction is reasoned from the colour space, the magnitude is our own tuning call, and the evaluator study is what settles it. The output band is **L\* 30–88 / C\* 12–60**. It started tighter — L\* 30–70 — deliberately, because that killed the washed-out and hyper-saturated failures first, and we widened it only when a specific reproducible case proved it was tighter than real emulsion: a pastel reference image could not produce a pastel recommendation, because the L\* 70 ceiling clamped a light pink (`#F8C8DC`, L\* 85.2) down to a dusty mauve.
+
+Worth stating up front that widening it carried a second-order cost we then had to fix, because it's the honest version of this answer. Raising the ceiling let the demographic *lightness* deltas actually take effect, which pushed the children's palettes into a region where sRGB cannot carry the chroma they ask for — so two categories a full 12 C\* apart both clipped to the same reachable value and rendered as **the identical colour**. The gender split disappeared silently. The fix is that where the gamut cannot give both, we now spend lightness to buy the requested chroma rather than cutting chroma at fixed lightness. It is also why that case has its own test: clipping is *monotonic*, so a monotonicity check passes straight through this bug and a separate distinctness check is what actually catches it.
+
+The five palette alternatives are offsets from the recommendation's own L\* rather than absolute values, so the palette scales as a family wherever the base recommendation lands instead of drifting apart when the band moves — the same band change above had knocked them 8–13 L\* adrift. All of this is now held by an 11-invariant suite (`backend/tools/test_color_recommender.py`) rather than one-off manual checks. Full record: [[🎨 Color Recommendation Module]] §§ Second fix round, Post-commit audit.
 
 ## System Design & Simpler Approaches
 
