@@ -145,9 +145,19 @@ Supersedes the planned format above (`region_assignments` was never implemented 
   "alternatives":  [{"hex": "#A184DB", "name": "Violet Haze", "relationship": "analogous"}],
   "neutrals":      [{"hex": "#FFFFFF", "name": "Pure White"}],
   "dominant_color":{"hex": "#74736C", "name": "Slate Grey", "share": 0.24},
-  "context_source":"non_wall_detections"
+  "context_colors":[{"hex": "#EFEAE2", "name": "Soft Linen", "share": 0.62}],
+  "context_source":"non_wall_detections",
+  "context_pixel_ratio": 0.41,
+  "seed_source":  "chromatic_pixels",
+
+  "reference_used": false,
+  "reference_weight": null,
+  "reference_dominant_color": null,
+  "category_applied": "none"
 }
 ```
+
+The last four landed 2026-08-08 with the reference-image / demographic feature. Every one of them exists so the UI can state **which optional inputs actually reached the palette** — `reference_used` is false whenever a reference was sent but dropped, `reference_weight` is `0.7` on a blend and `1.0` on the reference-only path, and `category_applied` reports the category that really ran rather than the one that was asked for. `seed_source` is one of `chromatic_pixels` · `neutral_room_fallback` · `reference_only` · `unavailable`.
 
 The `description` field states *why* the colour was chosen, naming the room's dominant colour. That explainability is what makes this defensible as a recommendation system rather than a lookup table — it matters for the ISO/IEC 25010 usability framing above.
 
@@ -485,6 +495,30 @@ Plain no-reference palettes are byte-identical to before — `none` still `#0086
 - The pre-upload hint no longer quotes a figure at all. The only place the page states a percentage is where it is describing a result it actually received.
 
 **Regression-checked:** 28 room × reference × category combinations; no-reference path unchanged and still complementary for all 7 categories; unusable reference still byte-identical to no-reference with `reference_weight: null`; reference-only correctly reports 1.0.
+
+---
+
+# 🧾 Post-commit audit (2026-08-08)
+
+Swept for anything the day's three fix rounds broke or left behind. `/api/recommend-colors` has **no other consumers** — nothing outside `color_recommender.py` calls `build_palette` / `recommend_colors` / `_paint_color`, and `color-recommendation.html` is the only page that hits the endpoint — so the response and constant changes could not have reached another subsystem. Two real defects found, both fixed:
+
+**1. The palette stopped reading as one family.** The five alternatives used hardcoded lightnesses (58 / 55 / 68 / 60 / 56) chosen for the old L\* 30–70 band. Once the band reached 88, a pastel recommendation shipped with alternatives 8–13 L\* darker than it:
+
+```
+recommended  #FE8090  L* 68.4
+analogous    #CA7557  L* 58.0   -10.4
+triadic      #5F9051  L* 55.0   -13.4
+cool         #5187D5  L* 56.0   -12.4
+```
+
+Another second-order effect of widening the band. Now `ALTERNATIVE_LIGHTNESS_OFFSETS`, expressed relative to the recommendation's own lightness. The values are the old absolutes minus 52 — the seed lightness they were originally chosen around — so a mid-range room reproduces the previous spread almost exactly (57.8 / 55.0 / 67.8 / 59.9 / 55.7) while a pastel one now travels with it.
+
+**2. No test coverage at all.** Every check across three fix rounds was a throwaway script. Two regressions that day — a lightness give-back that paid for nothing, and a chroma request that came back *smaller* when asked to be larger — would have been caught instantly by a standing test. Added `backend/tools/test_color_recommender.py`: 11 invariant checks, no model or server needed, same standalone shape as `test_toolpath.py`.
+
+The checks assert **properties, not golden hexes** — deliberately. The constants here are an explicit tuning target for the evaluator study, so a test pinning exact colours would fail on every legitimate re-tune and end up deleted rather than fixed. These should survive re-tuning: band containment, unique names, determinism, graceful degradation, relationship semantics, salient reference seed, neutral rooms not dragging hue, chroma monotonic in request, lightness never spent without gain, demographic categories staying distinct, palette lightness coherence.
+
+> [!note] The guards were verified to actually fire
+> Each of the day's fixes was reverted in memory to confirm its check fails without it. That exposed a gap worth recording: the **monotonicity** check does *not* catch plain clipping, because clipping is monotonic — it just flattens everything above the ceiling onto one value. That is exactly how `child_boy` and `child_girl` came to render the same hex. A separate `demographic categories stay distinct` check now covers it, asserted at a pink hue where the split is renderable and deliberately **not** at cyan-blue, where it genuinely is not.
 
 ## Still open (this feature)
 - [ ] **Evaluator study should specifically rate the child palettes** — they are now the least evidence-backed values in the module, by explicit choice

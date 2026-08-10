@@ -13,6 +13,7 @@ backend/
   toolpath_generator.py  Serpentine raster fill around obstacles + G-code serialization
   tools/
     test_toolpath.py     Standalone toolpath smoke test + matplotlib visualiser
+    test_color_recommender.py  Invariant tests for the palette maths (no model needed)
   requirements.txt       Pinned dependencies (read the version-risk notes at the top)
 ```
 

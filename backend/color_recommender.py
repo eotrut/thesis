@@ -341,6 +341,28 @@ SEED_ORIGIN_PHRASES: dict[str, tuple[str, str]] = {
     ),
 }
 
+# Lightness of the five alternatives, as offsets from the recommendation's own
+# lightness rather than absolute values.
+#
+# These were absolute (58 / 55 / 68 / 60 / 56) until 2026-08-08, which worked
+# while PAINT_LIGHTNESS was L* 30-70 and every seed therefore landed mid-range.
+# Once the band reached L* 88 a pastel recommendation shipped with alternatives
+# 8-13 L* darker than it, and the palette stopped reading as one family — the
+# alternatives are meant to be siblings of the recommendation, not a fixed set
+# of mid-tones that happens to sit near it.
+#
+# The values below are the old absolutes minus 52 — the seed lightness those
+# constants were originally chosen around — so a mid-range room reproduces the
+# previous spread, and a light or dark one now travels with it. _paint_color
+# still clamps each into the band, so the offsets cannot push a swatch out.
+ALTERNATIVE_LIGHTNESS_OFFSETS: dict[str, float] = {
+    "analogous": 6.0,
+    "triadic": 3.0,
+    "neutral": 16.0,
+    "warm": 8.0,
+    "cool": 4.0,
+}
+
 # Smallest area share a reference cluster may have and still be eligible to seed
 # the palette. Reference seeds are chosen by share x chroma (see
 # ``extract_reference_seed``), and without a floor a few dozen very saturated
@@ -1022,18 +1044,23 @@ def build_palette(
 
     recommended_hex = _paint_color(lightness, base_chroma, recommended_hue)
 
+    offsets = ALTERNATIVE_LIGHTNESS_OFFSETS
     variants = [
         # Analogous: a neighbour on the wheel. 30 deg in LCh is a smaller
         # apparent step than 30 deg in HSL over most of the circle, so this
         # reads as the quiet option it is meant to be.
-        ("analogous", _paint_color(58.0, base_chroma * 0.85, _shift_hue(base_hue, 30.0))),
+        ("analogous", _paint_color(lightness + offsets["analogous"],
+                                   base_chroma * 0.85, _shift_hue(base_hue, 30.0))),
         # Triadic: an exact third of the wheel.
-        ("triadic", _paint_color(55.0, base_chroma * 0.8, _shift_hue(base_hue, 120.0))),
+        ("triadic", _paint_color(lightness + offsets["triadic"],
+                                 base_chroma * 0.8, _shift_hue(base_hue, 120.0))),
         # Neutral: the seed's hue held at near-zero chroma, so it stays a grey
         # that leans the room's way rather than a colour.
-        ("neutral", _paint_color(68.0, 0.0, base_hue, neutral=True)),
-        ("warm", _paint_color(60.0, base_chroma * 0.9, _anchor_hue(base_hue, WARM_ANCHOR_DEG))),
-        ("cool", _paint_color(56.0, base_chroma * 0.9, _anchor_hue(base_hue, COOL_ANCHOR_DEG))),
+        ("neutral", _paint_color(lightness + offsets["neutral"], 0.0, base_hue, neutral=True)),
+        ("warm", _paint_color(lightness + offsets["warm"],
+                              base_chroma * 0.9, _anchor_hue(base_hue, WARM_ANCHOR_DEG))),
+        ("cool", _paint_color(lightness + offsets["cool"],
+                              base_chroma * 0.9, _anchor_hue(base_hue, COOL_ANCHOR_DEG))),
     ]
 
     relationship_notes = {
