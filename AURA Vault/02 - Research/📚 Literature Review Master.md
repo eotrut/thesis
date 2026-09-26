@@ -1,7 +1,7 @@
 ---
 tags: [research, literature-review, synthesis]
 created: 2026-03-29
-updated: 2026-08-08
+updated: 2026-08-16
 status: synced-with-manuscript
 ---
 # 📚 Literature Review Master
@@ -28,7 +28,7 @@ M. Zhang et al. (2023), Sun et al. (2023), Earnest et al. (2026), and Okpala et 
 [[Bjekic 2023 - Wall Segmentation CNN]] remains the direct precedent (CNN wall/non-wall classification). Instance segmentation has matured from He et al. (2017, Mask R-CNN) through UNet++ (Zhou et al., 2019) to the YOLO family: YOLOv8 (Jocher et al., 2023), evaluated on the COCO protocol (Lin et al., 2014), with strong recent applications — Zhang et al. (2024, YOLOv8-CM), Lin et al. (2025), Wang et al. (2023, BL-YOLOv8), Guan et al. (2025, YOLOv8+SAM). Ni et al. (2023) and R. Zhang et al. (2023) survey the broader scene-understanding/segmentation landscape.
 **What exists:** mature CNN/YOLO segmentation for walls and scenes at real-time speed.
 **The gap:** demonstrated in isolation, or on 3D/industrial hardware unavailable to an undergraduate prototype.
-**How AURA addresses it:** adopts **YOLOv8 (Ultralytics)**, zero-shot-first against COCO-pretrained weights — explicitly chosen (superseding an earlier MobileNetV3+DeepLabV3+ plan, see [[🔮 Segmentation Model]]) because the zero-shot/transfer-learning literature shows COCO backbones generalize well enough that custom fine-tuning becomes optional, not required.
+**How AURA addresses it:** adopts **YOLOv8 (Ultralytics)**, zero-shot-first against COCO-pretrained weights — explicitly chosen (superseding an earlier MobileNetV3+DeepLabV3+ plan, see [[🔮 Segmentation Model]]) because the zero-shot/transfer-learning literature shows COCO backbones generalize well enough that custom fine-tuning becomes optional, not required. AURA also cites SAM (Kirillov et al., 2023) and its lightweight distillation MobileSAM (Zhang et al., 2023) — not as a segmentation-pipeline component the way Guan et al. (2025) use SAM, but as the literature basis for a separate human-in-the-loop mask-correction tool (brush + click-to-select smart select) that lets an operator fix a YOLOv8 mask after inference — see [[🔮 Segmentation Model]] § Smart Select.
 
 ## Theme 4 — Spray Systems, Trajectory Planning, and Hardware Precision (expanded, 2026-07)
 Rudzuan et al. (2019) and Kiran & Prabhu (2020) establish gantry-mounted spray control; Chen et al. (2020), Bastida et al. (2023), Gabbar et al. (2024), and Hua et al. (2024) show that coating-quality gains come from geometry-informed trajectory planning, not the sprayer alone (Hua et al. cut coating-thickness variance from 51.9 μm² to 3.64 μm²). On the hardware-precision side — directly relevant since AURA runs an identical Arduino Mega + TB6600 + NEMA 23 stack — Wahjudi et al. (2025), Muas et al. (2026), Suresh et al. (2025), Elgeme et al. (2025), Das et al. (2024), and Ademi et al. (2025) provide realistic accuracy/repeatability benchmarks against which AURA's own ISO 9283:1998 motion evaluation can be interpreted.

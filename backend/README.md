@@ -10,10 +10,13 @@ backend/
   model_loader.py        Weights loading, CUDA/CPU selection, graceful missing-model handling
   color_recommender.py   Dominant-colour extraction (k-means in Lab) + colour-wheel palette
   coordinate_mapping.py  Normalized image polygons -> millimetres on the wall (homography)
+  mask_correction.py     Manual mask correction (brush + smart select) applied to the masks
+  smart_select.py        Click-to-select regions — MobileSAM, with a colour-wand fallback
   toolpath_generator.py  Serpentine raster fill around obstacles + G-code serialization
   tools/
     test_toolpath.py     Standalone toolpath smoke test + matplotlib visualiser
     test_color_recommender.py  Invariant tests for the palette maths (no model needed)
+    test_mask_correction.py    Before/after correction run + its invariants
   requirements.txt       Pinned dependencies (read the version-risk notes at the top)
 ```
 
@@ -97,6 +100,138 @@ every contour pixel.
 `wall_class_inferred: true` means the model has no wall-like class name, so the
 largest mask in the frame was treated as the wall. The UI labels this rather
 than presenting it as a model-declared class.
+
+### Manual mask correction — `mask_correction`
+
+Optional on `/api/segment`, `/api/toolpath` and `/api/recommend-colors`: the
+operator's edits, applied to the model's masks between inference and everything
+downstream. `/api/stream` does not take it — it is a server-side MJPEG generator
+with no per-frame correction hook.
+
+```json
+{
+  "version": 2,
+  "ops": [
+    { "kind": "brush", "mode": "add",   "radius": 0.025,
+      "points": [[0.10, 0.20], [0.19, 0.23]] },
+    { "kind": "smart", "mode": "erase", "engine": "sam",
+      "points": [[0.55, 0.48]], "labels": [1] }
+  ]
+}
+```
+
+Two kinds of operation:
+
+- **`brush`** — a freehand stroke: a polyline plus a `radius`.
+- **`smart`** — a *click*, resolved into a region by [smart select](#smart-select--apismart-select). What is stored is the prompt, never the outline it produced.
+
+Coordinates are normalized to 0–1 against the image; `radius` is a fraction of
+the image **width** for both axes, so the brush stays circular on a non-square
+frame. Operations composite in order, last one winning per pixel — so erasing
+over an earlier add undoes it exactly, whichever kind either was.
+
+Version 1 payloads (`strokes`, brush only, no `kind`) are still accepted and read
+as all-brush, so a browser tab left open across a server upgrade degrades to
+"the brush half still works" instead of failing mid-demo. A `smart` op inside a
+v1 envelope is rejected.
+
+- `add` — "this is paintable wall": unioned into the wall mask, and subtracted
+  from any non-paintable detection it covers (claiming a region as paintable has
+  to drop an obstacle's claim on it, or the toolpath keeps routing around it).
+- `erase` — "this is not paintable": subtracted from the wall masks, and the
+  part that actually overlapped wall is re-emitted as a synthetic non-paintable
+  region. A detection carries a single-ring polygon, so an erase *inside* a wall
+  would vanish if it were only subtracted; as an obstacle it goes through the
+  same subtraction that already handles windows and trim.
+
+Operations rather than a rasterised bitmap: ~1 KB per correction instead of a few
+hundred KB, resolution-independent (so one correction replays onto both a
+preview canvas and the full-resolution frame), and undoable client-side.
+
+Corrected responses carry a `mask_correction` block — `null` when no correction
+was sent — reporting the operation counts, `added_px` / `removed_px`, their area
+ratios, region counts, which engines resolved the smart selections, and what the
+model alone found:
+
+```json
+"mask_correction": {
+  "op_count": 2, "stroke_count": 1, "smart_count": 1,
+  "engines_used": ["sam"],
+  "add_stroke_count": 1, "erase_stroke_count": 1,
+  "added_px": 10103, "removed_px": 3209,
+  "added_area_ratio": 0.0247, "removed_area_ratio": 0.0078,
+  "added_region_count": 1, "removed_region_count": 1,
+  "model_detection_count": 5, "model_wall_detected": true
+}
+```
+
+Detections gain `source` (`"model"` or `"manual"`) and `corrected`. **Manual
+regions have `confidence: null` and are excluded from `wall_confidence` /
+`top_confidence`** — a hand-drawn region is not a detection, and a fabricated
+score would turn every confidence figure into a mixture of model output and
+operator opinion. `wall_coverage` is the opposite case: it describes the mask
+that will actually be painted, so corrections *are* counted in it.
+
+A malformed payload is a **400**, not a silent drop (unlike `reference_image`,
+which degrades gracefully). Correcting a mask is a deliberate override — showing
+the operator an uncorrected result would look like the brush did nothing.
+
+`python backend/tools/test_mask_correction.py` runs an image through both paths
+and asserts these invariants.
+
+### Smart select — `POST /api/smart-select`
+
+Click a point, get the region under it, so a correction can be made in one click
+instead of brushed in by hand. This endpoint **applies nothing** — it answers
+with the outline so the editor can preview it. The correction still stores the
+click, and `/api/segment` / `/api/toolpath` re-resolve it.
+
+Multipart: `image`, plus
+
+| Field | Format | Default |
+|---|---|---|
+| `points` | JSON `[[x, y], …]`, normalized 0–1. The click(s) | required |
+| `labels` | JSON `[1, 0, …]` — `1` grows the selection, `0` carves away from it | all `1` |
+| `engine` | `auto` \| `sam` \| `wand` | `auto` |
+| `tolerance` | `0`–`100`, wand only. Lab colour distance the fill will cross | `18` |
+
+```json
+{
+  "success": true,
+  "engine": "sam", "engine_requested": "auto",
+  "polygons": [[[0.02, 0.21], "…normalized 0-1 outline…"]],
+  "region_count": 2, "area_px": 251377, "area_ratio": 0.6141,
+  "looks_like_a_leak": false, "empty": false,
+  "image_width": 640, "image_height": 640, "elapsed_ms": 117.9
+}
+```
+
+**Two engines.** `sam` is **MobileSAM** (Zhang et al. 2023), a distilled Segment
+Anything (Kirillov et al. 2023), run through the SAM predictor already vendored
+in ultralytics — a 38 MB weights download, no new dependency. `wand` is a flood
+fill in CIE Lab, i.e. a magic wand: no weights, no GPU, ~6 ms, works offline
+forever. `auto` picks SAM when its weights are present.
+
+The response says which engine **actually ran**, and the editor writes that back
+into the saved operation. That is what stops a later replay from resolving the
+same click with a different engine and quietly changing the G-code. If a saved
+op names an engine the server does not have, `/api/toolpath` answers **400**
+asking for the selection to be re-run rather than substituting one.
+
+**Results are memoised** by (frame, engine, prompt). A SAM decode is ~150–300 ms
+and every re-plan replays every selection, so the click that made a selection
+warms the cache and the plan that follows is free — measured 1473 ms cold vs
+121 ms warm on the same corrected toolpath, byte-identical G-code both times.
+
+> **VRAM.** MobileSAM at `imgsz=1024` reserves ~2.3 GB alongside YOLOv8n-seg on
+> the 4 GB RTX 3050. It fits, with little headroom. `AURA_SAM_IMGSZ=512` lowers
+> it, `AURA_SAM_DEVICE=cpu` sidesteps the GPU, `AURA_SMART_SELECT=0` disables SAM
+> entirely. A CUDA OOM is caught, the cache dropped, and the request degrades to
+> the wand rather than failing.
+
+Errors: `400` missing/unreadable image, bad `points`/`labels`/`engine`, or no
+positive point · `503` the engine is present but could not run (OOM, broken
+predictor) · `500` anything else.
 
 Errors: `400` unreadable/missing image · `413` over 16 MB · `503` model not
 loaded · `500` inference failure. All return `{"success": false, "error": "…"}`.
@@ -249,6 +384,7 @@ Optional form fields:
 |---|---|---|
 | `corners` | JSON `[[x_px, y_px] × 4]` — the wall's corner markers in the image, ordered **top-left, top-right, bottom-right, bottom-left** | absent → uncalibrated fallback |
 | `wall_corners` | JSON `[[x_mm, y_mm] × 4]` — where those markers actually are on the wall, same order | the `AURA_WALL_*_MM` rectangle |
+| `mask_correction` | JSON brush strokes — see [Manual mask correction](#manual-mask-correction--mask_correction). Applied before the wall polygons are mapped into millimetres, so it lands in the G-code | absent → the model's mask unchanged |
 
 ```json
 {
@@ -354,9 +490,10 @@ is only checkable if you can see the obstacles next to the path avoiding them.
 An empty frame, or a wall completely covered by obstacles, is not an error: it
 returns `event_count: 0` and an empty `gcode`.
 
-Errors: `400` unreadable/missing image or malformed `corners` (wrong count,
-collinear, not JSON) · `503` model not loaded, or `shapely` missing · `500`
-anything else. All return `{"success": false, "error": "…"}`.
+Errors: `400` unreadable/missing image, malformed `corners` (wrong count,
+collinear, not JSON) or malformed `mask_correction` · `503` model not loaded, or
+`shapely` missing · `500` anything else. All return
+`{"success": false, "error": "…"}`.
 
 To see it rather than read it:
 
@@ -392,6 +529,10 @@ either way, but the confidence and mask quality are optimistic.
 | `AURA_IMGSZ` | `640` | Inference size — lower to 480 if the 4 GB GPU OOMs |
 | `AURA_WALL_CLASSES` | `wall,paintable,surface` | Substrings that mark a class as the paintable wall |
 | `AURA_NON_WALL_CLASSES` | `non-paintable,…,obstacle` | Substrings that veto the wall match — checked first, because `non-paintable` contains `paintable` |
+| `AURA_SAM_MODEL` | `website/model/mobile_sam.pt` | MobileSAM weights for smart select; absent → colour wand |
+| `AURA_SAM_IMGSZ` | `1024` | Lower to `512` if VRAM is tight |
+| `AURA_SAM_DEVICE` | auto | `cpu` keeps the GPU entirely for YOLOv8 |
+| `AURA_SMART_SELECT` | `1` | `0` forces the colour wand everywhere |
 | `AURA_CAMERA_INDEX` | `0` | Webcam index |
 | `AURA_STREAM_FPS` | `15` | Stream frame-rate cap |
 | `AURA_WALL_WIDTH_MM` | `1000` | Wall width assumed by the **uncalibrated** toolpath fallback (ignored once `corners` are supplied) |
@@ -412,7 +553,7 @@ Override the port once with `?api=http://localhost:5050` — it is remembered in
 | Page | Uses |
 |---|---|
 | `color-recommendation.html` | `POST /api/segment` on upload; `POST /api/recommend-colors` for the palette; `GET /api/capture` for the camera button; wall polygons clip the colour preview |
-| `camera-view.html` | `GET /api/stream?overlay=…` in Live mode; `POST /api/segment` per overlay in Upload mode (results cached); `POST /api/toolpath` in Toolpath mode — canvas render of the path over the frame, coverage tiles, and the G-code listing with a download button |
+| `camera-view.html` | `GET /api/stream?overlay=…` in Live mode; `POST /api/segment` per overlay in Upload mode (results cached); `POST /api/toolpath` in Toolpath mode — canvas render of the path over the frame, coverage tiles, and the G-code listing with a download button; a shared add/erase mask-correction brush posts `mask_correction` from both the Upload and Toolpath modes |
 | `dashboard.html` | `GET /api/status` every 3 s |
 
 ## Known limits

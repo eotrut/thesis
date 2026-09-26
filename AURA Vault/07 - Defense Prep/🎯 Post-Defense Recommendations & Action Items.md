@@ -10,6 +10,8 @@ status: active
 
 > [!success] Proposal defense — 2026-08-08
 > Panel accepted the proposal with six follow-up recommendations, three software-side and two hardware-side (plus one input still open). Logged here as the single source of truth for what changed and why; each item also lives in its own subsystem note (linked below) and as checklist items in [[📋 Master Task Tracker]] Phase 6.
+>
+> **Status:** both software items that don't need hardware are now built — colour reference-image + category (2026-08-08) and the mask-correction brush (2026-08-15). The paint-level indicator and both hardware items are blocked on the rig.
 
 ## Software — Color Recommendation Module
 
@@ -42,9 +44,27 @@ status: active
 
 **Decided:** add + erase brush, available on **both** the Upload/Playback segmentation preview and the Toolpath planner in `camera-view.html`.
 
-**Not yet decided — still needs Kurt (deferred until this feature is up next):** whether a correction made in Upload/Playback should carry over into Toolpath mode automatically, or is a separate correction each time.
+**Decided (2026-08-10):** yes — a correction made in Upload/Playback carries over into Toolpath mode automatically. One corrected mask, shared across both views, not a separate correction each time.
 
-**Full design notes:** [[🔮 Segmentation Model]] § Planned: Manual Mask Correction (2026-08-08) · [[🔌 Backend API & Web Integration]] § Planned endpoint changes
+> [!success] Built — 2026-08-15
+> Add + erase brush shipped on both views as decided, with the carry-over working as specified: one corrected mask per session/image, and switching to the Toolpath tab with a still already loaded in Upload/Playback adopts that frame automatically, so the correction is already applied when it plans. Not on the Live Feed — server-side MJPEG, no per-frame correction hook, as scoped.
+>
+> **Mechanics chosen** (these were left open): applied **server-side** in `backend/mask_correction.py` from a **stroke list** in a `mask_correction` form field, not a rasterised bitmap and not client-side. One patch point that the overlay, the G-code polygons and the colour clustering all read through; ~1 KB per correction; resolution-independent, which is what makes the carry-over work at all. Brush UX (also open): size slider as a % of image width, undo / <kbd>Ctrl</kbd>+<kbd>Z</kbd>, clear, <kbd>Esc</kbd>, pointer events for trackpad and touch.
+>
+> **The detail worth defending:** an erase in the *middle* of a wall is re-emitted as a non-paintable region, not just subtracted from the mask — detections carry single-ring polygons, so a mid-wall hole would otherwise vanish and the gantry would paint straight over it. `backend/tools/test_mask_correction.py` asserts that the planned paintable area actually drops.
+>
+> **Ask-me-this-at-defense:** manual regions carry `confidence: null` and are **excluded from every reported confidence figure**, so a corrected mask can never inflate the model's score — the brush changes the region, not the metric. `wall_coverage` does include them, because it describes what will actually be painted. The Chapter 4 mAP/IoU re-run after the ~1,000-image training must be measured with the brush unused.
+
+> [!success] Extended — 2026-08-16: ✨ Smart select
+> Kurt's call: the brush works but isn't a wow factor on stage. Added **click-to-select** next to it — click a point and the region under it is selected, powered by **MobileSAM** (Zhang et al. 2023, a distilled Segment Anything — Kirillov et al. 2023). The decisive fact: **the ultralytics version already pinned ships the SAM predictors**, so this cost a 38 MB weights file and **no new dependency**. A CIE-Lab flood-fill wand is the fallback when the weights are absent, and the editor labels which engine is live.
+>
+> **The demo moment:** click the wall → the wall. Click the door → *just the door* (12.6% of the frame vs the wall's 61.5%). Shift+click grows a selection, right-click carves part away.
+>
+> **The number worth quoting:** MobileSAM's wall and the fine-tuned YOLOv8's wall agree to within **0.11%** (265 px of 251,377 outside each other). Two independently-trained models converging on the same boundary says more about the segmentation than either does alone — and it is a test invariant, not an anecdote.
+>
+> **Before defense day:** `mobile_sam.pt` is git-ignored like `best.pt`, so it does not travel with a clone — **put it on the demo machine**, or smart select silently degrades to a flood fill. Also worth an RRL addition (Theme 3): promptable foundation-model segmentation as a human-in-the-loop correction.
+
+**Full as-built notes:** [[🔮 Segmentation Model]] §§ Manual Mask Correction (Brush Tool) — BUILT 2026-08-15, Smart Select (2026-08-16) · [[🔌 Backend API & Web Integration]] §§ Manual mask correction, POST /api/smart-select
 
 ## Software — Paint-Level Indicator
 
@@ -87,9 +107,8 @@ Tradeoff to flag honestly: needs a one-time tare + single-point calibration (kno
 
 ## Not yet decided / needs Kurt
 
-Color-module items are now **all resolved** (see above). Remaining, deferred until we get to each feature:
+Color-module items are now **all resolved** (see above). Mask correction is **built** (2026-08-15) — carry-over, payload shape and brush UX all settled, see § Software — Camera / Masking View above. Remaining, deferred until we get to each feature:
 
-- [ ] Whether a mask correction made in Upload/Playback carries over into Toolpath mode automatically, or is a separate correction each time.
 - [ ] Load cell mounting point and paint reservoir finalization (blocks calibration).
 - [ ] Caster load rating — needs the frame's actual assembled weight, not yet measured.
 - [ ] Whether spray-width tapering near edges gets built alongside the PWM base case or deferred.

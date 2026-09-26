@@ -1,7 +1,7 @@
 ---
 tags: [thesis, writing, feedback]
 created: 2026-03-29
-updated: 2026-08-05
+updated: 2026-08-16
 status: active
 ---
 # 📝 Writing Notes & Advisor Feedback
@@ -128,3 +128,83 @@ Replace: "Qualitative analysis will involve user evaluation of color recommendat
 - General Block Diagram (p.25): arrow "G-code Commands (Serial)" → "Custom Protocol Commands (Serial)"
 - System Block Diagram (p.26): Control Board box "Parses G-code · STEP/DIR/EN breakout · relay control (M3/M5) · endstop homing" → "Parses custom command set (MOVE/SPRAY/HOME) · STEP/DIR/EN breakout · relay control (M3/M5) · endstop homing"
 - Flowchart (p.27): "Raster Path Planning + G-code Generation" → "Raster Path Planning + Toolpath Generation"; "Stream G-code Commands / pyserial, 115200 baud – line-by-line, wait for 'ok'" → "Stream Custom Protocol Commands / pyserial, 115200 baud – line-by-line, wait for ack"
+
+## 2026-08-16 — SAM/MobileSAM + demographic §2.8b: pending manual Doc edits
+
+Pending — none of these are applied to the live Google Doc yet. Both additions are also written into [[📚 Literature Review Master]] (Theme 3) and [[📝 Chapter 2 - Review of Related Literature]] (§2.6, §2.8b) already; this note is the exact paste text for the actual manuscript, plus a citation audit.
+
+### A. SAM / MobileSAM (§2.6, concept paper p.11–12)
+
+**Insert new sentence** — after "...Guan et al. (2025) coupled an improved YOLOv8 with a fine-tuned Segment Anything Model to unify detection and segmentation in a single modular pipeline for building defect analysis." and before "These results collectively confirm..." (p.11–12):
+
+> Segment Anything itself (SAM; Kirillov et al., 2023) is the promptable, class-agnostic foundation model underlying that hybrid trend; its lightweight distillation, MobileSAM (Zhang et al., 2023), is the literature basis for AURA's own human-in-the-loop mask-correction tool — used to let an operator refine a YOLOv8 mask after inference, not folded into the segmentation pipeline itself the way Guan et al. (2025) use it.
+
+**Find/Replace** — same paragraph, the justification sentence right after (p.12):
+
+Find: "These results collectively confirm that the YOLOv8 family is well suited to segmenting flat, texture-rich surfaces of the type targeted in the present study, and they justify the study's decision to adopt YOLOv8 rather than an earlier segmentation architecture."
+
+Replace: "These results collectively confirm that the YOLOv8 family is well suited to segmenting flat, texture-rich surfaces of the type targeted in the present study, and they justify the study's decision to adopt YOLOv8 rather than an earlier segmentation architecture, with SAM/MobileSAM adopted as a complementary correction layer, not a competing detector."
+
+**New References entries (both web-verified 2026-08-16):**
+
+- Insert between "Kiran, J. R. V. S., & Prabhu, S. (2020)" and "Koh, I. (2023)" (p.45):
+  Kirillov, A., Mintun, E., Ravi, N., Mao, H., Rolland, C., Gustafson, L., Xiao, T., Whitehead, S., Berg, A. C., Lo, W.-Y., Dollar, P., & Girshick, R. (2023). Segment anything. In *Proceedings of the IEEE/CVF International Conference on Computer Vision (ICCV)* (pp. 4015–4026). IEEE. https://doi.org/10.1109/ICCV51070.2023.00371
+
+- Insert between "Zeng, Y. ... (2024)" and "Zhang, C., Chen, X. ... (2024)" (p.50) — same-surname/same-initial rule, 2023 sorts before 2024:
+  Zhang, C., Han, D., Qiao, Y., Kim, J. U., Bae, S.-H., Lee, S., & Hong, C. S. (2023). Faster segment anything: Towards lightweight SAM for mobile applications. arXiv. https://doi.org/10.48550/arXiv.2306.14289
+
+**2026-08-16 addendum — exact placement for all 10 new references, checked against actual current text (list has pre-existing ordering quirks, e.g. Attalla sits before Arrandale on p.41 — placements below use the real neighbors, not idealized alphabetical order):**
+
+| New reference | Insert between | Page |
+|---|---|---|
+| Bogicevic (2018) | Boadu, E. F. ... (2023) → **Bogicevic** → Brosque, C. ... (2022) | p.42 |
+| Hao & Guan (2025) | Guan, Y., Zhao, X., & Liu, H. (2025) → **Hao & Guan** → Hassan, E. ... (2022) | p.44 |
+| Jiang (2020) | Jaya, A. ... (2024) → **Jiang** → Jocher, G. ... (2023) | p.45 |
+| Kirillov (2023) | Kiran, J. R. V. S., & Prabhu, S. (2020) → **Kirillov** → Koh, I. (2023) | p.45 |
+| Li, M. (2022) | Li, H.-C., Wang, L.-K. ... (2025) → **Li, M.** → Lin, T.-Y. ... (2014) | p.46 |
+| Rapuano (2023) | Patil, A. (2021) → **Rapuano** → Republic Act No. 11058 (2018) | p.47–48 |
+| Torres (2020) | Tiboni, G., Camoriano, R., & Tommasi, T. (2022) → **Torres** → Van der Voordt (next row) | p.49 |
+| Van der Voordt (2017) | Torres (above) → **Van der Voordt** → Wahjudi, A., & Yusuf, M. (2025) | p.49 |
+| Yıldırım (2007) | Xu, L. ... (2025) → **Yıldırım** → Yuan, L. ... (2021) | p.50 |
+| Zhang, C. (2023, MobileSAM) | Zeng, Y. ... (2024) → **Zhang, C. (2023)** → Zhang, C., Chen, X. ... (2024) | p.50 |
+
+Note: no proper "V" section exists yet — Vijaya Kumar, S. et al. (2025) sits misplaced between "Republic Act No. 11058" and "Rudzuan" (outstanding since the 2026-07-18 review). Convenient moment to fix while touching this stretch for Torres/Van der Voordt — optional.
+
+### B. Demographic color preference §2.8b (concept paper p.13–15)
+
+**Citation audit run 2026-08-16** — 8 of 9 in-text citations in the vault's §2.8b draft are confirmed real via web search, with corrections to two in-text forms:
+- "Hao et al. (2025)" → **"Hao and Guan (2025)"** — only 2 authors, APA doesn't use "et al." below 3.
+- "Voordt et al. (2017)" → **"Van der Voordt et al. (2017)"** — Dutch surname, "Van der" is part of it.
+- **"Huang et al. (2009)" could not be verified** after multiple targeted searches — no matching publication found. Do not paste it into the References list. Either supply the original source yourself, or drop it from the sentence below (reads fine as two citations instead of three).
+
+**Insert new paragraphs** — after "...these studies confirm that AI-based color recommendation is a mature enough capability to be embedded, rather than merely referenced, in an autonomous painting system, and they justify AURA's decision to treat color recommendation as a first-class module in the pipeline rather than as an afterthought." and before "From these findings, it becomes clear that current solutions maintain their incomplete state..." (p.13–14):
+
+> Bogicevic et al. (2018) provide the most direct experimental evidence for gender-linked color preference in a room-design context: across 762 participants, male guests preferred "masculine" hotel-room color schemes while female guests rated masculine and feminine schemes equally. Age- and gender-specific preference is further quantified for children by Hao and Guan (2025), whose 3–15-year-old sample preferred warm hues at moderate-low saturation (≈25/100) and high value (≈75/100), with boys preferring higher saturation than girls and preference for saturation decreasing with age — and extended into adolescence (12–16) by Jiang et al. (2020). Elderly preference is independently corroborated by three studies: Torres et al. (2020) tie warm-versus-cool preference to room activity (warm for activity rooms, cool for bedrooms, both genders), Li et al. (2022) find low-saturation, warm, bright tones preferred across 306 Chinese urban elderly respondents, and Rapuano et al. (2023) find the elderly weight color/material more heavily than younger groups when emotionally evaluating a space. Broader survey evidence (Van der Voordt et al., 2017; Yıldırım et al., 2007) confirms age and gender are statistically significant factors in interior color preference across general populations, though the specific direction and magnitude vary with study population, room type, and culture.
+>
+> None of the literature reviewed above conditions its output on occupant demographics: existing AI-based color-recommendation systems generate or apply color without reference to who the space is for, and every painting-robot system reviewed in this chapter treats color as fixed or database-looked-up rather than personalized. AURA's color recommendation module closes this gap by taking a "for whom" category input that biases the CIE LCh seed — lightness, chroma, and hue angle — before harmony generation runs. The direction of each bias (warmer or cooler, lighter or darker, more or less saturated, by age and gender category) follows the cited findings above; the magnitudes are design parameters set by this study, not values fitted to the cited data, and are evaluated against the ISO/IEC 25010:2011 color-recommendation-quality criterion described in Chapter 3. An optional reference-image upload lets the occupant's own stated intent enter the same seed, blended 70/30 against the room's own measured color.
+
+**Find/Replace** — gap-synthesis paragraph right after (p.14), add the demographic gap alongside the existing color-recommendation gap:
+
+Find: "likewise, AI-based color recommendation systems have proliferated (Wu et al., 2023; Yuan et al., 2021), but they rarely close the loop by driving a physical actuator, so their outputs remain on the screen rather than on the wall."
+
+Replace: "likewise, AI-based color recommendation systems have proliferated (Wu et al., 2023; Yuan et al., 2021) and, where demographic factors are studied at all (Bogicevic et al., 2018; Li et al., 2022), they appear only as human-interior-design survey findings rather than being wired into a generative recommendation system — and even so, they rarely close the loop by driving a physical actuator, so their outputs remain on the screen rather than on the wall."
+
+**Optional consistency tweak** (p.15, Rationale paragraph — not required, matches the "(g) demographic-aware color personalization" phrasing already in [[📚 Literature Review Master]]'s Overall Synthesis):
+
+Find: "...and an AI-based color recommendation module —all executed on a single undergraduate-scale prototype..."
+
+Replace: "...and a demographic-conditioned AI-based color recommendation module —all executed on a single undergraduate-scale prototype..."
+
+**New References entries (alphabetical placement, insert into the existing list):**
+
+- Bogicevic, V., Bujisic, M., Cobanoglu, C., & Feinstein, A. H. (2018). Gender and age preferences of hotel room design. *International Journal of Contemporary Hospitality Management*, *30*(2), 874–899. https://doi.org/10.1108/IJCHM-08-2016-0450
+- Hao, K., & Guan, H. (2025). A study of children's color preferences for consultation room furniture. *HERD: Health Environments Research & Design Journal*, *18*(2), 208–220. https://doi.org/10.1177/19375867251327969
+- Jiang, L., Cheung, V., Westland, S., Rhodes, P. A., Shen, L., & Xu, L. (2020). The impact of color preference on adolescent children's choice of furniture. *Color Research and Application*, *45*(4), 754–767. https://doi.org/10.1002/col.22507
+- Li, M., Cai, Q., Li, C., Wu, X., Wang, T., Xu, J., & Wu, Z. (2022). A study in bedroom living environment preferences of the urban elderly in China. *Sustainability*, *14*(20), 13552. https://doi.org/10.3390/su142013552
+- Rapuano, M., Sarno, M., Ruotolo, F., Ruggiero, G., Iuliano, S., Masullo, M., Maffei, L., Cioffi, F., & Iachini, T. (2023). Emotional reactions to different indoor solutions: The role of age. *Buildings*, *13*(7), 1737. https://doi.org/10.3390/buildings13071737
+- Torres, A., Serra, J., Llopis, J., & Delcampo, A. (2020). Color preference cool versus warm in nursing homes depends on the expected activity for interior spaces. *Frontiers of Architectural Research*, *9*(4), 739–750. https://doi.org/10.1016/j.foar.2020.06.002
+- Van der Voordt, T., Bakker, I., & de Boon, J. (2017). Color preferences for four different types of spaces. *Facilities*, *35*(3/4), 155–169. https://doi.org/10.1108/F-06-2015-0043
+- ~~Huang et al. (2009) — NOT independently verifiable, do not paste until Kurt supplies the source.~~
+- Yıldırım, K., Akalın-Baskaya, A., & Hidayetoglu, M. L. (2007). Effects of indoor color on mood and cognitive performance. *Building and Environment*, *42*(9), 3233–3240. (DOI not independently located — ScienceDirect record: https://www.sciencedirect.com/science/article/abs/pii/S0360132306002289; flag for manual DOI lookup before final submission, same treatment as the He 2026 DOI issue above)
+
+**Note on Li surname collision:** the References list will now have two different "Li" first authors — Li, H.-C. (2025, clothing color-harmony ML paper, already in the list) and Li, M. (2022, elderly bedroom study, new). Different years and different first initials, so standard APA alphabetization/in-text handling keeps them distinct without extra disambiguation — just don't merge them into one entry when editing.
