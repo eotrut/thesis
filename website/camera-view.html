@@ -100,6 +100,17 @@
             <span><span class="swatch-dot" style="background:#EAB308;"></span>Post-Painting — adds non-paintable regions in amber</span>
           </div>
 
+          <!-- Manual mask correction. The same corrected mask is used by the
+               Toolpath tab — one correction per image, not one per view. -->
+          <div class="btn-row" id="upload-correct-row" style="display: none; margin-top: 16px;">
+            <button class="btn btn-secondary" id="upload-correct" type="button">✎ Correct mask</button>
+            <button class="btn btn-secondary" id="upload-correct-reset" type="button" disabled>
+              Discard correction
+            </button>
+          </div>
+
+          <p class="correction-note" id="upload-correction-note" style="display: none;"></p>
+
           <p class="demo-note" id="upload-meta"></p>
         </div>
       </section>
@@ -141,6 +152,20 @@
           </div>
 
           <p class="demo-note" id="toolpath-meta"></p>
+
+          <!-- Manual mask correction. This is the half that matters: a region
+               the model missed here becomes G-code the gantry actually sprays,
+               or fails to. Opens the same editor as the Upload tab and patches
+               the same mask, so a correction drawn there is already applied
+               when this view plans. -->
+          <div class="btn-row" id="toolpath-correct-row" style="display: none; margin-top: 16px;">
+            <button class="btn btn-secondary" id="toolpath-correct" type="button">✎ Correct mask</button>
+            <button class="btn btn-secondary" id="toolpath-correct-reset" type="button" disabled>
+              Discard correction
+            </button>
+          </div>
+
+          <p class="correction-note" id="toolpath-correction-note" style="display: none;"></p>
 
           <!-- Corner-marker calibration. The four clicked points are image
                pixels; the envelope size below says where those same points sit
@@ -220,6 +245,82 @@
       </section>
     </div>
   </main>
+
+  <!-- ==================================================================
+       Manual mask correction editor — shared by Upload / Playback and
+       Toolpath. One element, because there is one corrected mask per image.
+       Not offered for the Live Feed: that view is a server-side MJPEG
+       stream with no per-frame correction hook.
+       ================================================================== -->
+  <div class="mask-editor" id="mask-editor" hidden>
+    <div class="mask-editor-dialog" role="dialog" aria-modal="true"
+         aria-labelledby="mask-editor-title" id="mask-editor-dialog">
+      <div class="mask-editor-head">
+        <h3 id="mask-editor-title">Correct the mask</h3>
+        <button class="btn btn-secondary" id="mask-close" type="button">Close</button>
+      </div>
+
+      <p class="demo-note" style="margin-top: 0;">
+        Green is what will be painted, amber is what will be avoided. Mark a region the
+        model missed with <strong>Add</strong>, or something it wrongly called wall with
+        <strong>Erase</strong>. The preview shows the corrected mask, not your input — an
+        edit that changes nothing (adding over wall the model already found, erasing over
+        bare background) correctly shows nothing.
+        <kbd>Ctrl</kbd>+<kbd>Z</kbd> undoes, <kbd>Esc</kbd> closes.
+      </p>
+
+      <div class="mask-editor-stage" id="mask-editor-stage">
+        <canvas id="mask-canvas" width="960" height="540"></canvas>
+        <div class="mask-editor-loading" id="mask-loading">Loading the model's mask…</div>
+      </div>
+
+      <p class="pick-hint" id="mask-hint" style="display: none;"></p>
+
+      <div class="mask-editor-tools">
+        <div class="btn-row">
+          <span class="mask-editor-group-label">Tool</span>
+          <button class="btn btn-toggle btn-secondary is-active" id="mask-tool-brush"
+                  type="button">✎ Brush</button>
+          <button class="btn btn-toggle btn-secondary" id="mask-tool-smart"
+                  type="button">✨ Smart select</button>
+          <span class="mask-engine-badge" id="mask-engine-badge"></span>
+        </div>
+
+        <div class="btn-row">
+          <span class="mask-editor-group-label">Marks as</span>
+          <button class="btn btn-toggle btn-secondary is-active" id="mask-add"
+                  type="button" data-brush="add">＋ Add wall</button>
+          <button class="btn btn-toggle btn-secondary" id="mask-erase"
+                  type="button" data-brush="erase">− Erase wall</button>
+        </div>
+      </div>
+
+      <div class="mask-editor-tools">
+        <div class="field-row" id="mask-radius-row">
+          <label for="mask-radius">Brush size</label>
+          <input type="range" id="mask-radius" min="0.5" max="15" step="0.1" value="2.5" />
+          <span class="mask-editor-size" id="mask-radius-value"></span>
+        </div>
+
+        <!-- Wand only. MobileSAM takes no tolerance — it is a prompted model,
+             not a colour threshold — so this row hides when SAM is the engine
+             rather than sitting there doing nothing. -->
+        <div class="field-row" id="mask-tolerance-row" style="display: none;">
+          <label for="mask-tolerance">Colour tolerance</label>
+          <input type="range" id="mask-tolerance" min="2" max="80" step="1" value="18" />
+          <span class="mask-editor-size" id="mask-tolerance-value"></span>
+        </div>
+
+        <div class="btn-row">
+          <button class="btn btn-secondary" id="mask-undo" type="button" disabled>Undo</button>
+          <button class="btn btn-secondary" id="mask-clear" type="button" disabled>Clear</button>
+          <button class="btn btn-primary" id="mask-apply" type="button">Apply correction</button>
+        </div>
+      </div>
+
+      <p class="demo-note" id="mask-summary"></p>
+    </div>
+  </div>
 
   <div id="footer"></div>
 
@@ -311,6 +412,16 @@
         } else {
           stopStream();
         }
+
+        /* A correction is per IMAGE, and the two views have separate file
+           pickers — so "carries into Toolpath mode automatically" only holds if
+           Toolpath is actually looking at the same frame. Arriving here with a
+           still already loaded in Upload / Playback and nothing loaded here
+           adopts it, which is what the operator meant by switching tabs. */
+        if (name === "toolpath" && !sourceFile && currentFile && !isVideo) {
+          window.AURA.showToast("Planning the frame loaded in Upload / Playback.");
+          loadToolpathFile(currentFile);
+        }
       }
 
       Object.keys(MODES).forEach(function (key) {
@@ -357,6 +468,822 @@
       startStream("pre");
 
       /* ================================================================== */
+      /* Manual mask correction (brush)                                     */
+      /*                                                                    */
+      /* Panel recommendation from the 2026-08-08 proposal defense: a       */
+      /* human-in-the-loop safety net for what the model still misses while */
+      /* the training set grows toward ~1,000 images.                       */
+      /*                                                                    */
+      /* State model: ONE corrected mask per image, shared by both views.   */
+      /* The strokes are held against the image's identity, so a correction */
+      /* drawn in Upload / Playback is already applied the moment Toolpath  */
+      /* plans the same frame, and picking a different photo starts clean — */
+      /* wall regions traced on one room mean nothing on another.           */
+      /*                                                                    */
+      /* Wire format: the operations themselves, in normalized (0-1) image  */
+      /* coordinates, posted as a `mask_correction` form field. The server  */
+      /* rasterises and unions/subtracts them against the model's own mask  */
+      /* (see backend/mask_correction.py). Sending operations rather than a */
+      /* flattened bitmap is what makes them ~1 KB, resolution-independent  */
+      /* (the same list replays onto this preview canvas and onto the       */
+      /* full-resolution frame the server segments), and undoable.          */
+      /*                                                                    */
+      /* Two kinds of operation, both stored the same way:                  */
+      /*   brush — a freehand stroke: polyline + radius                     */
+      /*   smart — a CLICK, resolved into a region by POST /api/smart-select */
+      /*           (MobileSAM when its weights are present, a colour flood   */
+      /*           fill otherwise). What is stored is the click, never the   */
+      /*           outline it produced — that is what keeps the payload tiny */
+      /*           and lets one correction replay at any resolution. The     */
+      /*           returned outline rides along under `_polygons` for the    */
+      /*           preview only and is stripped before posting.              */
+      /* ================================================================== */
+
+      var CORRECTION_VERSION = 2;
+      var MASK_WALL_COLOR = "#22C55E";
+      var MASK_OBSTACLE_COLOR = "#EAB308";
+
+      // Backing-store cap for the editor canvas. Strokes are normalized, so
+      // this only decides preview sharpness, never correction resolution.
+      var EDITOR_MAX_WIDTH = 1400;
+
+      // Mirrors the server's per-stroke limit with headroom to spare; a hand
+      // drag decimated below cannot get near it.
+      var MAX_STROKE_POINTS = 2048;
+
+      var VIEW_LABELS = { upload: "Upload / Playback", toolpath: "Toolpath" };
+
+      var correction = {
+        key: null,      // identity of the image these operations belong to
+        ops: [],
+        origin: null,   // which view made the most recent edit
+        stats: null     // the server's last `mask_correction` block
+      };
+
+      /* Files have no stable id, so identity is name + size + mtime. Two
+         different photos colliding on all three is not a case worth designing
+         around; the same file re-picked in the other tab matching is the whole
+         point. */
+      function fileKey(file) {
+        if (!file) return null;
+        return [file.name, file.size, file.lastModified].join("|");
+      }
+
+      /** Point the correction at a file. Returns true if edits carried over. */
+      function adoptCorrectionFor(file) {
+        var key = fileKey(file);
+        if (key && correction.key === key) return correction.ops.length > 0;
+        correction.key = key;
+        correction.ops = [];
+        correction.origin = null;
+        correction.stats = null;
+        // The other view may still be showing a note for the image just
+        // dropped — there is one store, so both readouts move together.
+        refreshCorrectionNotes();
+        return false;
+      }
+
+      function hasCorrectionFor(file) {
+        return correction.ops.length > 0 &&
+               correction.key !== null &&
+               correction.key === fileKey(file);
+      }
+
+      /** The `mask_correction` form value for this file, or null.
+       *
+       * Underscore-prefixed keys are dropped on the way out — they are preview
+       * state (the outline a smart click resolved to) that the server would
+       * only ignore, and shipping a full outline per click would undo the whole
+       * reason the payload stores prompts instead of geometry. Same convention
+       * as the backend stripping `_mask` before it serializes a detection.
+       */
+      function correctionField(file) {
+        if (!hasCorrectionFor(file)) return null;
+        return JSON.stringify(
+          { version: CORRECTION_VERSION, ops: correction.ops },
+          function (key, value) {
+            return key.charAt(0) === "_" ? undefined : value;
+          }
+        );
+      }
+
+      /* A pure store mutation — it does NOT touch the on-page notes. Those
+         track what the server last returned, so they stay describing the
+         correction currently baked into the overlay or the plan until a
+         re-request lands. Clearing strokes in the editor and then closing
+         without applying must not make the page claim a correction is gone
+         while the G-code on screen still contains it. */
+      function clearCorrection() {
+        correction.ops = [];
+        correction.origin = null;
+        correction.stats = null;
+      }
+
+      /** Record what the backend says the correction actually changed. */
+      function noteCorrectionResult(data) {
+        correction.stats = (data && data.mask_correction) || null;
+      }
+
+      /* One store, two readouts. Both are refreshed together so a view that is
+         not on screen cannot come back showing a correction that has since been
+         dropped or redrawn — there is no request pending for the idle view to
+         correct it on its own. */
+      function refreshCorrectionNotes() {
+        refreshUploadCorrectionNote();
+        refreshToolpathCorrectionNote();
+      }
+
+      /* The operation counts come from this page; the percentages and region
+         counts come back from the server, because only it knows how much of
+         each edit landed on something that changed. */
+      function describeCorrection(file, view) {
+        if (!hasCorrectionFor(file)) return "";
+
+        var adds = 0;
+        var smart = 0;
+        correction.ops.forEach(function (op) {
+          if (op.mode === "add") adds++;
+          if (op.kind === "smart") smart++;
+        });
+
+        var bits = [
+          correction.ops.length + " edit(s) — " + adds + " add, " +
+            (correction.ops.length - adds) + " erase" +
+            (smart ? " · " + smart + " smart select" : "")
+        ];
+
+        var stats = correction.stats;
+        if (stats) {
+          bits.push(
+            "+" + (stats.added_area_ratio * 100).toFixed(2) + "% of the frame added as wall, −" +
+            (stats.removed_area_ratio * 100).toFixed(2) + "% removed"
+          );
+          bits.push(
+            stats.added_region_count + " added / " + stats.removed_region_count +
+            " removed region(s)"
+          );
+          if (stats.engines_used && stats.engines_used.length) {
+            bits.push("smart select via " + stats.engines_used.map(engineLabel).join(" + "));
+          }
+        }
+
+        if (correction.origin && correction.origin !== view) {
+          bits.push("drawn in " + VIEW_LABELS[correction.origin] + ", carried over");
+        }
+
+        return "Manual mask correction active — " + bits.join(" · ") +
+               ". Confidence figures still describe the model alone.";
+      }
+
+      /* ---------------------------------------------------------------- */
+      /* The model's own detections, for the editor to draw under the      */
+      /* strokes. Fetched WITHOUT the correction field on purpose: the     */
+      /* editor composites the strokes on top itself, so a pre-corrected   */
+      /* mask from the server would apply them twice.                      */
+      /* ---------------------------------------------------------------- */
+
+      var detectionCache = { key: null, detections: null };
+
+      function modelDetections(file) {
+        var key = fileKey(file);
+        if (detectionCache.key === key && detectionCache.detections) {
+          return Promise.resolve(detectionCache.detections);
+        }
+
+        var formData = new FormData();
+        formData.append("image", file);
+        formData.append("overlay", "pre"); // polygons are all we need here
+
+        return window.AURA.apiFetch("/api/segment", {
+          method: "POST",
+          body: formData,
+          timeoutMs: 60000
+        }).then(function (data) {
+          if (!data.success) throw new Error(data.error || "Segmentation failed.");
+          detectionCache = { key: key, detections: data.detections || [] };
+          return detectionCache.detections;
+        });
+      }
+
+      /* ---------------------------------------------------------------- */
+      /* Editor                                                            */
+      /* ---------------------------------------------------------------- */
+
+      var maskEditor = document.getElementById("mask-editor");
+      var maskDialog = document.getElementById("mask-editor-dialog");
+      var maskCanvas = document.getElementById("mask-canvas");
+      var maskLoading = document.getElementById("mask-loading");
+      var maskSummary = document.getElementById("mask-summary");
+      var maskRadius = document.getElementById("mask-radius");
+      var maskRadiusValue = document.getElementById("mask-radius-value");
+      var maskAddBtn = document.getElementById("mask-add");
+      var maskEraseBtn = document.getElementById("mask-erase");
+      var maskUndoBtn = document.getElementById("mask-undo");
+      var maskClearBtn = document.getElementById("mask-clear");
+      var maskApplyBtn = document.getElementById("mask-apply");
+      var maskCloseBtn = document.getElementById("mask-close");
+      var maskHint = document.getElementById("mask-hint");
+      var maskBrushToolBtn = document.getElementById("mask-tool-brush");
+      var maskSmartToolBtn = document.getElementById("mask-tool-smart");
+      var maskEngineBadge = document.getElementById("mask-engine-badge");
+      var maskRadiusRow = document.getElementById("mask-radius-row");
+      var maskToleranceRow = document.getElementById("mask-tolerance-row");
+      var maskTolerance = document.getElementById("mask-tolerance");
+      var maskToleranceValue = document.getElementById("mask-tolerance-value");
+
+      var editorImage = null;   // decoded source frame
+      var editorFile = null;    // the File the editor is open on
+      var editorDets = [];      // the model's detections for that frame
+      var editorView = null;    // which view opened the editor
+      var editorApply = null;   // its "re-run with this correction" callback
+      var brushMode = "add";    // what an edit MEANS: add wall / erase wall
+      var editorTool = "brush"; // how the edit is MADE: brush / smart
+      var activeStroke = null;
+
+      /* Which smart-select engine the backend will actually use. Read from
+         /api/status rather than assumed, so the tool never promises MobileSAM
+         on a machine that only has the colour wand. */
+      var smartEngine = "wand";
+      var smartEngineKnown = false;
+      var smartBusy = 0;        // in-flight /api/smart-select sequence number
+
+      function engineLabel(engine) {
+        return engine === "sam" ? "MobileSAM" : "colour wand";
+      }
+
+      /** Brush radius as a fraction of image width — the server's convention. */
+      function brushRadiusNorm() {
+        return Math.max(0.001, (parseFloat(maskRadius.value) || 2.5) / 100);
+      }
+
+      function wandTolerance() {
+        return Math.round(parseFloat(maskTolerance.value) || 18);
+      }
+
+      window.AURA.apiFetch("/api/status", { timeoutMs: 8000 })
+        .then(function (status) {
+          var smart = status && status.smart_select;
+          if (!smart) return;
+          smartEngine = smart.default_engine || "wand";
+          smartEngineKnown = true;
+          updateEditorUi();
+        })
+        .catch(function () { /* the editor still works; the badge just stays blank */ });
+
+      function layerCanvas() {
+        var layer = document.createElement("canvas");
+        layer.width = maskCanvas.width;
+        layer.height = maskCanvas.height;
+        return layer;
+      }
+
+      function fillPolygons(ctx, detections, wantWall, color) {
+        ctx.fillStyle = color;
+        (detections || []).forEach(function (det) {
+          if (!det.is_wall !== !wantWall) return;
+          var polygon = det.polygon || [];
+          if (polygon.length < 3) return;
+          ctx.beginPath();
+          polygon.forEach(function (point, i) {
+            var x = point[0] * maskCanvas.width;
+            var y = point[1] * maskCanvas.height;
+            if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+          });
+          ctx.closePath();
+          ctx.fill();
+        });
+      }
+
+      /* Radius scales by canvas WIDTH on both axes and the caps/joins are
+         round — the same two rules the server rasterises by, which is what
+         keeps this preview and the applied correction the same shape. */
+      function paintStroke(ctx, stroke, color, operation) {
+        var w = maskCanvas.width;
+        var h = maskCanvas.height;
+        var radius = stroke.radius * w;
+
+        ctx.save();
+        ctx.globalCompositeOperation = operation;
+        ctx.strokeStyle = color;
+        ctx.fillStyle = color;
+        ctx.lineWidth = 2 * radius;
+        ctx.lineCap = "round";
+        ctx.lineJoin = "round";
+
+        if (stroke.points.length === 1) {
+          ctx.beginPath();
+          ctx.arc(stroke.points[0][0] * w, stroke.points[0][1] * h, radius, 0, Math.PI * 2);
+          ctx.fill();
+        } else {
+          ctx.beginPath();
+          stroke.points.forEach(function (point, i) {
+            var x = point[0] * w;
+            var y = point[1] * h;
+            if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+          });
+          ctx.stroke();
+        }
+        ctx.restore();
+      }
+
+      /* A smart selection draws the outline the server resolved its click to.
+         Held under `_polygons` and never posted — the saved operation is the
+         click, and the server re-resolves it. Until the response lands the op
+         has no outline and simply contributes nothing to the preview. */
+      function paintSmart(ctx, op, color, operation) {
+        var polygons = op._polygons || [];
+        if (!polygons.length) return;
+
+        ctx.save();
+        ctx.globalCompositeOperation = operation;
+        ctx.fillStyle = color;
+        polygons.forEach(function (polygon) {
+          if (!polygon || polygon.length < 3) return;
+          ctx.beginPath();
+          polygon.forEach(function (point, i) {
+            var x = point[0] * maskCanvas.width;
+            var y = point[1] * maskCanvas.height;
+            if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+          });
+          ctx.closePath();
+          ctx.fill();
+        });
+        ctx.restore();
+      }
+
+      function paintOp(ctx, op, color, operation) {
+        if (op.kind === "smart") paintSmart(ctx, op, color, operation);
+        else paintStroke(ctx, op, color, operation);
+      }
+
+      /* The preview is the CORRECTED mask, composited exactly the way the
+         backend composites it, rather than the model's mask with the user's
+         scribbles drawn over it. Showing the strokes would let someone leave
+         the editor believing a stroke took effect when it landed on a region
+         that was already wall. */
+      function renderEditor() {
+        if (!editorImage) return;
+
+        var ctx = maskCanvas.getContext("2d");
+        var w = maskCanvas.width;
+        var h = maskCanvas.height;
+
+        // Edits flatten into two disjoint layers, the last one winning per
+        // pixel — so erasing over an earlier add undoes it exactly, whether
+        // either was a brush stroke or a smart selection. Same rule the server
+        // applies in MaskCorrection.rasterize.
+        var addLayer = layerCanvas();
+        var eraseLayer = layerCanvas();
+        var addCtx = addLayer.getContext("2d");
+        var eraseCtx = eraseLayer.getContext("2d");
+
+        correction.ops.forEach(function (op) {
+          if (op.mode === "add") {
+            paintOp(addCtx, op, MASK_WALL_COLOR, "source-over");
+            paintOp(eraseCtx, op, "#000000", "destination-out");
+          } else {
+            paintOp(eraseCtx, op, MASK_OBSTACLE_COLOR, "source-over");
+            paintOp(addCtx, op, "#000000", "destination-out");
+          }
+        });
+
+        var modelWall = layerCanvas();
+        fillPolygons(modelWall.getContext("2d"), editorDets, true, MASK_WALL_COLOR);
+
+        // Effective wall = model wall ∪ add − erase.
+        var wallLayer = layerCanvas();
+        var wallCtx = wallLayer.getContext("2d");
+        wallCtx.drawImage(modelWall, 0, 0);
+        wallCtx.drawImage(addLayer, 0, 0);
+        wallCtx.globalCompositeOperation = "destination-out";
+        wallCtx.drawImage(eraseLayer, 0, 0);
+
+        // An erase only means anything where it hit wall the model had found;
+        // that intersection is what the backend re-emits as a non-paintable
+        // region, so the toolpath routes around it even mid-wall.
+        var eraseHit = layerCanvas();
+        var hitCtx = eraseHit.getContext("2d");
+        hitCtx.drawImage(eraseLayer, 0, 0);
+        hitCtx.globalCompositeOperation = "destination-in";
+        hitCtx.drawImage(modelWall, 0, 0);
+
+        // Effective obstacles = model obstacles − add ∪ erase-hit. Claiming a
+        // region as paintable has to drop an obstacle's claim on it too, or the
+        // planner would keep routing around what you just said to paint.
+        var obsLayer = layerCanvas();
+        var obsCtx = obsLayer.getContext("2d");
+        fillPolygons(obsCtx, editorDets, false, MASK_OBSTACLE_COLOR);
+        obsCtx.globalCompositeOperation = "destination-out";
+        obsCtx.drawImage(addLayer, 0, 0);
+        obsCtx.globalCompositeOperation = "source-over";
+        obsCtx.drawImage(eraseHit, 0, 0);
+
+        ctx.clearRect(0, 0, w, h);
+        ctx.drawImage(editorImage, 0, 0, w, h);
+
+        ctx.globalAlpha = 0.42;
+        ctx.drawImage(wallLayer, 0, 0);
+        ctx.drawImage(obsLayer, 0, 0);
+
+        // Lift the regions the brush actually changed, without recolouring
+        // them: same green/amber meaning as everywhere else on this page, just
+        // brighter where the correction is doing work.
+        var touched = layerCanvas();
+        var touchedCtx = touched.getContext("2d");
+        touchedCtx.drawImage(addLayer, 0, 0);
+        touchedCtx.drawImage(eraseHit, 0, 0);
+        touchedCtx.globalCompositeOperation = "source-in";
+        touchedCtx.fillStyle = "#FFFFFF";
+        touchedCtx.fillRect(0, 0, w, h);
+
+        ctx.globalAlpha = 0.18;
+        ctx.drawImage(touched, 0, 0);
+        ctx.globalAlpha = 1;
+      }
+
+      function updateEditorUi() {
+        var count = correction.ops.length;
+        maskUndoBtn.disabled = count === 0;
+        maskClearBtn.disabled = count === 0;
+
+        var diameterPx = editorImage
+          ? Math.round(2 * brushRadiusNorm() * editorImage.naturalWidth)
+          : 0;
+        maskRadiusValue.textContent =
+          parseFloat(maskRadius.value).toFixed(1) + "% of width" +
+          (diameterPx ? " · ⌀ " + diameterPx + " px" : "");
+        maskToleranceValue.textContent =
+          "±" + wandTolerance() + " — higher spreads further";
+
+        maskAddBtn.classList.toggle("is-active", brushMode === "add");
+        maskEraseBtn.classList.toggle("is-active", brushMode === "erase");
+
+        var smart = editorTool === "smart";
+        maskBrushToolBtn.classList.toggle("is-active", !smart);
+        maskSmartToolBtn.classList.toggle("is-active", smart);
+        maskRadiusRow.style.display = smart ? "none" : "flex";
+        // Tolerance is a flood-fill parameter. MobileSAM is prompted, not
+        // thresholded, so the control is hidden rather than shown inert.
+        maskToleranceRow.style.display =
+          smart && smartEngine !== "sam" ? "flex" : "none";
+
+        maskEngineBadge.textContent = smartEngineKnown
+          ? engineLabel(smartEngine)
+          : "";
+        maskEngineBadge.style.display =
+          smart && smartEngineKnown ? "inline-block" : "none";
+
+        if (smart) {
+          maskHint.style.display = "block";
+          maskHint.textContent = smartBusy
+            ? "Selecting…"
+            : "Click a region to select it. Shift+click to grow the last selection, " +
+              "right-click to cut part of it away." +
+              (smartEngine === "sam"
+                ? " MobileSAM picks the object under the cursor."
+                : " The colour wand spreads from the click — raise the tolerance if it stops short.");
+        } else {
+          maskHint.style.display = "none";
+        }
+
+        if (!count) {
+          maskSummary.textContent =
+            "No correction made — applying now re-runs against the model's mask unchanged.";
+          return;
+        }
+
+        var adds = 0;
+        var smartCount = 0;
+        correction.ops.forEach(function (op) {
+          if (op.mode === "add") adds++;
+          if (op.kind === "smart") smartCount++;
+        });
+        maskSummary.textContent =
+          count + " edit(s): " + adds + " add, " + (count - adds) + " erase" +
+          (smartCount ? ", " + smartCount + " via smart select" : "") +
+          ". This correction is used by both the Upload / Playback preview " +
+          "and the Toolpath plan for this image.";
+      }
+
+      function setEditorLoading(message) {
+        maskLoading.textContent = message || "";
+        maskLoading.style.display = message ? "flex" : "none";
+      }
+
+      function sizeEditorCanvas(image) {
+        var width = Math.min(EDITOR_MAX_WIDTH, image.naturalWidth || EDITOR_MAX_WIDTH);
+        maskCanvas.width = Math.max(1, Math.round(width));
+        maskCanvas.height = Math.max(
+          1,
+          Math.round(maskCanvas.width * (image.naturalHeight / image.naturalWidth))
+        );
+      }
+
+      /** Normalized (0-1) image position of a pointer event over the canvas. */
+      function pointerPoint(event) {
+        var rect = maskCanvas.getBoundingClientRect();
+        if (!rect.width || !rect.height) return null;
+        return [
+          Math.min(1, Math.max(0, (event.clientX - rect.left) / rect.width)),
+          Math.min(1, Math.max(0, (event.clientY - rect.top) / rect.height))
+        ];
+      }
+
+      /* ---------------------------------------------------------------- */
+      /* Smart select — click, and the server says what region that is     */
+      /*                                                                   */
+      /* The op is pushed immediately with no outline and filled in when    */
+      /* the response lands, so the click feels committed straight away and */
+      /* undo works even mid-request. A failed request removes the op again */
+      /* rather than leaving a selection that resolves to nothing.          */
+      /* ---------------------------------------------------------------- */
+
+      function lastSmartOp() {
+        for (var i = correction.ops.length - 1; i >= 0; i--) {
+          if (correction.ops[i].kind === "smart") return correction.ops[i];
+        }
+        return null;
+      }
+
+      function resolveSmartOp(op) {
+        if (!editorFile) return;
+
+        var seq = ++smartBusy;
+        updateEditorUi();
+
+        var formData = new FormData();
+        formData.append("image", editorFile);
+        formData.append("points", JSON.stringify(op.points));
+        formData.append("labels", JSON.stringify(op.labels));
+        formData.append("engine", op.engine);
+        formData.append("tolerance", String(op.tolerance));
+
+        window.AURA.apiFetch("/api/smart-select", {
+          method: "POST",
+          body: formData,
+          timeoutMs: 60000
+        })
+          .then(function (data) {
+            if (!data.success) throw new Error(data.error || "Smart select failed.");
+
+            op._polygons = data.polygons || [];
+            // Record the engine that ACTUALLY ran, not the one requested. The
+            // op was created as "auto"; pinning it here is what stops a later
+            // replay on the server from resolving the same click with a
+            // different engine and quietly changing the plan.
+            op.engine = data.engine;
+
+            if (data.empty) {
+              window.AURA.showToast("Nothing selected there — try another spot.");
+            } else if (data.looks_like_a_leak) {
+              window.AURA.showToast(
+                "That fill covered almost the whole frame — lower the colour tolerance."
+              );
+            }
+          })
+          .catch(function (err) {
+            var index = correction.ops.indexOf(op);
+            if (index !== -1) correction.ops.splice(index, 1);
+            window.AURA.showToast(err.message);
+          })
+          .then(function () {
+            if (seq === smartBusy) smartBusy = 0;
+            renderEditor();
+            updateEditorUi();
+          });
+      }
+
+      function smartClick(point, mode) {
+        var op;
+        if (mode === "new") {
+          op = {
+            kind: "smart",
+            mode: brushMode,
+            engine: "auto",         // pinned to the real engine on response
+            points: [point],
+            labels: [1],
+            tolerance: wandTolerance(),
+            _polygons: []
+          };
+          correction.ops.push(op);
+        } else {
+          op = lastSmartOp();
+          // Nothing to refine yet — a shift/right-click with no prior
+          // selection is most usefully read as starting one.
+          if (!op) return smartClick(point, "new");
+          op.points = op.points.concat([point]);
+          op.labels = op.labels.concat([mode === "grow" ? 1 : 0]);
+        }
+
+        correction.origin = editorView;
+        correction.stats = null;
+        renderEditor();
+        resolveSmartOp(op);
+      }
+
+      maskCanvas.addEventListener("contextmenu", function (event) {
+        // Right-click is "cut this out of the selection" while smart select is
+        // active, so the browser menu must not open over the canvas.
+        if (editorTool === "smart") event.preventDefault();
+      });
+
+      maskCanvas.addEventListener("pointerdown", function (event) {
+        if (!editorImage) return;
+        var point = pointerPoint(event);
+        if (!point) return;
+
+        event.preventDefault();
+
+        if (editorTool === "smart") {
+          if (event.button === 2) smartClick(point, "shrink");
+          else if (event.shiftKey) smartClick(point, "grow");
+          else smartClick(point, "new");
+          return;
+        }
+
+        if (event.button !== 0) return;
+        try { maskCanvas.setPointerCapture(event.pointerId); } catch (e) { /* older browser */ }
+
+        activeStroke = {
+          kind: "brush",
+          mode: brushMode,
+          radius: brushRadiusNorm(),
+          points: [point]
+        };
+        correction.ops.push(activeStroke);
+        correction.origin = editorView;
+        // Any earlier server figures describe a correction that no longer exists.
+        correction.stats = null;
+
+        renderEditor();
+        updateEditorUi();
+      });
+
+      maskCanvas.addEventListener("pointermove", function (event) {
+        if (!activeStroke) return;
+        var point = pointerPoint(event);
+        if (!point) return;
+
+        // Decimate. A drag fires a pointer event every few pixels; the stroke
+        // is a disc of finite radius, so sampling finer than a fraction of that
+        // radius adds points that change nothing and inflate the payload.
+        var last = activeStroke.points[activeStroke.points.length - 1];
+        var dx = (point[0] - last[0]) * maskCanvas.width;
+        var dy = (point[1] - last[1]) * maskCanvas.height;
+        var step = Math.max(1.5, activeStroke.radius * maskCanvas.width * 0.3);
+        if (dx * dx + dy * dy < step * step) return;
+        if (activeStroke.points.length >= MAX_STROKE_POINTS) return;
+
+        activeStroke.points.push(point);
+        renderEditor();
+      });
+
+      function endStroke(event) {
+        if (!activeStroke) return;
+        activeStroke = null;
+        try {
+          if (event && maskCanvas.hasPointerCapture(event.pointerId)) {
+            maskCanvas.releasePointerCapture(event.pointerId);
+          }
+        } catch (e) { /* nothing to release */ }
+        updateEditorUi();
+      }
+
+      maskCanvas.addEventListener("pointerup", endStroke);
+      maskCanvas.addEventListener("pointercancel", endStroke);
+
+      maskAddBtn.addEventListener("click", function () {
+        brushMode = "add";
+        updateEditorUi();
+      });
+
+      maskEraseBtn.addEventListener("click", function () {
+        brushMode = "erase";
+        updateEditorUi();
+      });
+
+      maskBrushToolBtn.addEventListener("click", function () {
+        editorTool = "brush";
+        updateEditorUi();
+      });
+
+      maskSmartToolBtn.addEventListener("click", function () {
+        editorTool = "smart";
+        updateEditorUi();
+      });
+
+      maskRadius.addEventListener("input", updateEditorUi);
+      maskTolerance.addEventListener("input", updateEditorUi);
+
+      maskUndoBtn.addEventListener("click", function () {
+        correction.ops.pop();
+        correction.stats = null;
+        renderEditor();
+        updateEditorUi();
+      });
+
+      maskClearBtn.addEventListener("click", function () {
+        clearCorrection();
+        renderEditor();
+        updateEditorUi();
+      });
+
+      function closeMaskEditor() {
+        activeStroke = null;
+        editorApply = null;
+        editorView = null;
+        editorFile = null;
+        smartBusy = 0;
+        maskEditor.hidden = true;
+        document.body.classList.remove("is-modal-open");
+      }
+
+      maskCloseBtn.addEventListener("click", closeMaskEditor);
+
+      // Backdrop click closes; a click inside the dialog must not.
+      maskEditor.addEventListener("click", function (event) {
+        if (event.target === maskEditor) closeMaskEditor();
+      });
+      maskDialog.addEventListener("click", function (event) {
+        event.stopPropagation();
+      });
+
+      maskApplyBtn.addEventListener("click", function () {
+        var apply = editorApply;
+        closeMaskEditor();
+        if (apply) apply();
+      });
+
+      document.addEventListener("keydown", function (event) {
+        if (maskEditor.hidden) return;
+        if (event.key === "Escape") {
+          closeMaskEditor();
+          return;
+        }
+        if ((event.ctrlKey || event.metaKey) && (event.key || "").toLowerCase() === "z") {
+          event.preventDefault();
+          maskUndoBtn.click();
+        }
+      });
+
+      /**
+       * Open the editor over one image.
+       * options: { file, view, onApply }
+       */
+      function openMaskEditor(options) {
+        if (!options || !options.file) return;
+
+        editorApply = options.onApply || null;
+        editorView = options.view || null;
+        editorFile = options.file;   // smart select re-uploads it per click
+        editorImage = null;
+        editorDets = [];
+        smartBusy = 0;
+        adoptCorrectionFor(options.file); // same image keeps its edits
+
+        maskEditor.hidden = false;
+        document.body.classList.add("is-modal-open");
+        setEditorLoading("Loading the model's mask…");
+        updateEditorUi();
+
+        var url = URL.createObjectURL(options.file);
+        var image = new Image();
+
+        image.onload = function () {
+          URL.revokeObjectURL(url);
+          editorImage = image;
+          sizeEditorCanvas(image);
+          renderEditor();
+          updateEditorUi();
+
+          modelDetections(options.file)
+            .then(function (detections) {
+              editorDets = detections;
+              setEditorLoading(null);
+              renderEditor();
+            })
+            .catch(function (err) {
+              // The frame is still brushable without the model's mask under it
+              // — the operator just cannot see what was already found. Better
+              // than refusing to open the editor at all.
+              setEditorLoading(null);
+              renderEditor();
+              window.AURA.showToast(
+                "Could not load the model's mask to draw under: " + err.message
+              );
+            });
+        };
+
+        image.onerror = function () {
+          URL.revokeObjectURL(url);
+          closeMaskEditor();
+          window.AURA.showToast("Could not decode that image for correction.");
+        };
+
+        image.src = url;
+      }
+
+      /* ================================================================== */
       /* Upload / playback — stills go through POST /api/segment            */
       /* ================================================================== */
 
@@ -368,6 +1295,10 @@
       var uploadStatusText = document.getElementById("upload-status-text");
       var uploadStatusDot = document.getElementById("upload-status-dot");
       var uploadMeta = document.getElementById("upload-meta");
+      var uploadCorrectRow = document.getElementById("upload-correct-row");
+      var uploadCorrectBtn = document.getElementById("upload-correct");
+      var uploadCorrectReset = document.getElementById("upload-correct-reset");
+      var uploadCorrectionNote = document.getElementById("upload-correction-note");
 
       var currentFile = null;
       var isVideo = false;
@@ -406,6 +1337,10 @@
         uploadOverlay = "pre";
         isVideo = file.type.indexOf("video/") === 0;
 
+        // Re-picking the frame that was already corrected keeps its strokes;
+        // a different one starts clean.
+        var carried = adoptCorrectionFor(file);
+
         var url = URL.createObjectURL(file);
         var existingMedia = uploadPanel.querySelector("img, video");
         if (existingMedia) existingMedia.remove();
@@ -435,15 +1370,68 @@
         uploadToggles.style.display = "flex";
         uploadLegend.style.display = "flex";
 
-        Array.prototype.forEach.call(uploadToggles.querySelectorAll("button"), function (b) {
-          b.classList.toggle("is-active", b.getAttribute("data-overlay") === "pre");
-        });
+        selectUploadOverlay("pre");
         setVideoOverlays("pre");
 
+        // No brush for clips: there is no per-frame video segmentation
+        // endpoint to correct, and the overlays here are placeholders.
+        uploadCorrectRow.style.display = isVideo ? "none" : "flex";
+        refreshCorrectionNotes();
+
         if (!isVideo) {
+          if (carried) {
+            window.AURA.showToast("Existing mask correction carried over to this frame.");
+          }
           // Warm the cache for the mask views so the first toggle is instant.
           requestOverlay("during", true);
         }
+      });
+
+      function refreshUploadCorrectionNote() {
+        var text = describeCorrection(currentFile, "upload");
+        uploadCorrectionNote.textContent = text;
+        uploadCorrectionNote.style.display = text ? "block" : "none";
+        uploadCorrectReset.disabled = !hasCorrectionFor(currentFile);
+      }
+
+      function selectUploadOverlay(overlay) {
+        uploadOverlay = overlay;
+        Array.prototype.forEach.call(uploadToggles.querySelectorAll("button"), function (b) {
+          b.classList.toggle("is-active", b.getAttribute("data-overlay") === overlay);
+        });
+      }
+
+      /** Re-segment the current still and repaint whichever overlay is showing. */
+      function refreshUploadOverlay() {
+        // Every cached overlay was rendered from the pre-correction mask. `pre`
+        // is the raw frame, which a correction never touches, so it survives.
+        overlayCache = { pre: overlayCache.pre };
+
+        // "Pre-Painting" is the raw frame by definition, so re-running against
+        // it would show the operator nothing and read as the brush having done
+        // nothing. Land them on the view that actually shows the wall mask they
+        // just edited.
+        if (uploadOverlay === "pre") selectUploadOverlay("during");
+
+        return requestOverlay(uploadOverlay).then(function (src) {
+          var frame = uploadPanel.querySelector("#upload-frame");
+          if (src && frame) frame.src = src;
+          refreshCorrectionNotes();
+        });
+      }
+
+      uploadCorrectBtn.addEventListener("click", function () {
+        if (!currentFile || isVideo) return;
+        openMaskEditor({
+          file: currentFile,
+          view: "upload",
+          onApply: refreshUploadOverlay
+        });
+      });
+
+      uploadCorrectReset.addEventListener("click", function () {
+        clearCorrection();
+        refreshUploadOverlay();
       });
 
       /** Ask the backend to segment the current still at the given overlay mode. */
@@ -457,6 +1445,9 @@
         formData.append("image", currentFile);
         formData.append("overlay", overlay);
 
+        var field = correctionField(currentFile);
+        if (field) formData.append("mask_correction", field);
+
         return window.AURA.apiFetch("/api/segment", {
           method: "POST",
           body: formData,
@@ -466,17 +1457,30 @@
             if (!data.success) throw new Error(data.error || "Segmentation failed.");
             overlayCache[overlay] = window.AURA.toDataUri(data.masked_image, data.image_format);
             overlayCache.pre = window.AURA.toDataUri(data.original_image, data.image_format);
+            noteCorrectionResult(data);
 
             if (!silent) {
+              // Reported against the model's own detections even when the mask
+              // was corrected — the brush changes the region, not the score.
               var pct = data.wall_detected
-                ? (data.wall_confidence * 100).toFixed(1) + "% confidence"
+                ? (data.wall_confidence !== null
+                    ? (data.wall_confidence * 100).toFixed(1) + "% confidence"
+                    : "wall region is hand-corrected only")
                 : "no wall region found";
               setUploadStatus("Wall detection: " + pct, "ok");
               setTimeout(function () { setUploadStatus(null); }, 3500);
             }
-            uploadMeta.textContent =
-              data.detection_count + " object(s) detected · inference " +
-              data.inference_ms + " ms on " + data.device + " · " + data.model;
+
+            var metaBits = [
+              data.detection_count + " object(s) detected",
+              "inference " + data.inference_ms + " ms on " + data.device,
+              data.model
+            ];
+            if (data.mask_correction) {
+              metaBits.push("mask hand-corrected");
+            }
+            uploadMeta.textContent = metaBits.join(" · ");
+            refreshUploadCorrectionNote();
             return overlayCache[overlay];
           })
           .catch(function (err) {
@@ -493,12 +1497,7 @@
         if (!btn) return;
 
         var overlay = btn.getAttribute("data-overlay");
-        uploadOverlay = overlay;
-
-        Array.prototype.forEach.call(uploadToggles.querySelectorAll("button"), function (b) {
-          b.classList.remove("is-active");
-        });
-        btn.classList.add("is-active");
+        selectUploadOverlay(overlay);
 
         if (isVideo) {
           setVideoOverlays(overlay);
@@ -545,6 +1544,10 @@
       var replanBtn = document.getElementById("tp-replan");
       var envelopeW = document.getElementById("tp-envelope-w");
       var envelopeH = document.getElementById("tp-envelope-h");
+      var toolpathCorrectRow = document.getElementById("toolpath-correct-row");
+      var toolpathCorrectBtn = document.getElementById("toolpath-correct");
+      var toolpathCorrectReset = document.getElementById("toolpath-correct-reset");
+      var toolpathCorrectionNote = document.getElementById("toolpath-correction-note");
 
       var COLOR_PAINT = "#22C55E";
       var COLOR_TRAVEL = "#F43F5E";
@@ -923,6 +1926,32 @@
       /* Planning                                                          */
       /* ---------------------------------------------------------------- */
 
+      function refreshToolpathCorrectionNote() {
+        var text = describeCorrection(sourceFile, "toolpath");
+        toolpathCorrectionNote.textContent = text;
+        toolpathCorrectionNote.style.display = text ? "block" : "none";
+        toolpathCorrectReset.disabled = !hasCorrectionFor(sourceFile);
+      }
+
+      /** Re-plan with whatever calibration is currently in force. */
+      function replanCurrent() {
+        planToolpath(pickedCorners.length === 4 ? pickedCorners : null);
+      }
+
+      toolpathCorrectBtn.addEventListener("click", function () {
+        if (!sourceFile) return;
+        openMaskEditor({
+          file: sourceFile,
+          view: "toolpath",
+          onApply: replanCurrent
+        });
+      });
+
+      toolpathCorrectReset.addEventListener("click", function () {
+        clearCorrection();
+        replanCurrent();
+      });
+
       /** Plan the path. Passing corners switches the backend to homography. */
       function planToolpath(corners) {
         if (!sourceFile) return;
@@ -930,6 +1959,12 @@
 
         var formData = new FormData();
         formData.append("image", sourceFile);
+
+        // The mask the plan is raster-filled from, after the operator's edits.
+        // Sent on every plan, including the first one for a frame carried in
+        // from Upload / Playback, so the G-code never lags the correction.
+        var field = correctionField(sourceFile);
+        if (field) formData.append("mask_correction", field);
 
         if (corners && corners.length === 4) {
           var wallW = Math.max(1, parseFloat(envelopeW.value) || 0);
@@ -952,10 +1987,12 @@
             if (!data.success) throw new Error(data.error || "Toolpath generation failed.");
 
             lastToolpath = data;
+            noteCorrectionResult(data);
             toolpathPanel.style.display = "flex";
             toolpathLegend.style.display = "flex";
             toolpathMetrics.style.display = "grid";
             calibrationBlock.style.display = "block";
+            toolpathCorrectRow.style.display = "flex";
             gcodeCard.style.display = data.gcode.length ? "block" : "none";
 
             // Picking is done once a plan comes back; the canvas goes back to
@@ -984,10 +2021,19 @@
               "inference " + data.inference_ms + " ms on " + data.device,
               data.model
             ];
+            if (data.mask_correction) {
+              // Counted in the region totals above, so say where they came
+              // from — this plan is not purely the model's output.
+              bits.push(
+                "includes a manual mask correction (" +
+                data.mask_correction.stroke_count + " stroke(s))"
+              );
+            }
             if (data.using_fallback_model) {
               bits.push("FALLBACK model, not the fine-tuned AURA weights");
             }
             toolpathMeta.textContent = bits.join(" · ");
+            refreshCorrectionNotes();
           })
           .catch(function (err) {
             setToolpathStatus(err.message, "error");
@@ -995,14 +2041,23 @@
           });
       }
 
-      toolpathInput.addEventListener("change", function () {
-        var file = toolpathInput.files && toolpathInput.files[0];
+      /** Take a still into the toolpath flow and plan it, uncalibrated first. */
+      function loadToolpathFile(file) {
         if (!file) return;
 
         sourceFile = file;
         lastFileName = file.name.replace(/\.[^.]+$/, "");
         pickedCorners = [];
         setPickMode(false);
+
+        // Same frame as the one corrected in the other view? Then the strokes
+        // are already ours and the first plan below carries them.
+        var carried = adoptCorrectionFor(file);
+        toolpathCorrectRow.style.display = "flex";
+        refreshCorrectionNotes();
+        if (carried) {
+          window.AURA.showToast("Mask correction carried over — this plan uses it.");
+        }
 
         // Decode the frame once and keep it: every later re-plan and every
         // corner pick draws from this same image rather than re-reading the
@@ -1022,6 +2077,11 @@
           planToolpath(null);
         };
         image.src = url;
+      }
+
+      toolpathInput.addEventListener("change", function () {
+        var file = toolpathInput.files && toolpathInput.files[0];
+        if (file) loadToolpathFile(file);
       });
 
       pickBtn.addEventListener("click", function () {

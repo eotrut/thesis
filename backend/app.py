@@ -21,6 +21,14 @@ POST /api/toolpath  multipart image -> mm-space serpentine paint path + G-code
 GET  /api/stream    MJPEG webcam stream, ?overlay=pre|during|post
 GET  /api/status    model / camera / CUDA status for the dashboard
 
+Manual mask correction
+----------------------
+Every image endpoint accepts an optional ``mask_correction`` form field: the
+operator's brush strokes as JSON, applied to the model's own masks between
+inference and everything downstream. See ``mask_correction.py``. The stream is
+the one exception — it is a server-side MJPEG generator with no per-frame
+correction hook, so the brush is not offered there.
+
 Run:
     python backend/app.py                  # http://localhost:5000
 """
@@ -53,6 +61,12 @@ from coordinate_mapping import (  # noqa: E402
     CalibrationError,
     WallCalibration,
 )
+from mask_correction import (  # noqa: E402
+    CorrectionError,
+    apply_correction,
+    parse_correction,
+    simplify_polygon,
+)
 from model_loader import (  # noqa: E402
     PROJECT_ROOT,
     ModelLoadError,
@@ -60,6 +74,14 @@ from model_loader import (  # noqa: E402
     segmentation_model,
     torch_info,
 )
+from smart_select import (  # noqa: E402
+    DEFAULT_WAND_TOLERANCE,
+    SmartSelectError,
+    SmartSelectUnavailable,
+    normalize_engine,
+    select_region,
+)
+from smart_select import status as smart_select_status  # noqa: E402
 from toolpath_generator import (  # noqa: E402
     SoftLimitError,
     ToolpathError,
@@ -339,6 +361,17 @@ def normalize_overlay(value: str | None) -> str:
     return value if value in VALID_OVERLAYS else "post"
 
 
+def correction_from_request():
+    """Read the optional ``mask_correction`` field. Raises ``CorrectionError``.
+
+    Every image endpoint takes it, because the mask being patched is the same
+    one that feeds the toolpath, the overlay and the colour recommender — one
+    corrected mask per image, not one per consumer.
+    """
+    raw = request.form.get("mask_correction") or request.args.get("mask_correction")
+    return parse_correction(raw)
+
+
 def normalize_category(value: str | None) -> str:
     """Read the optional "who is this room for?" field.
 
@@ -360,31 +393,21 @@ def normalize_category(value: str | None) -> str:
 # Detection parsing
 # --------------------------------------------------------------------------- #
 
-def _simplify_polygon(points: np.ndarray, width: int, height: int) -> list[list[float]]:
-    """Reduce a mask contour to a compact, normalized (0-1) polygon.
-
-    The frontend clips its colour-preview canvas with this, so a few dozen
-    points is plenty — shipping every contour pixel would bloat the JSON by
-    hundreds of KB per detection.
-    """
-    if points is None or len(points) < 3:
-        return []
-    contour = points.astype(np.float32).reshape(-1, 1, 2)
-    epsilon = 0.004 * cv2.arcLength(contour, True)
-    approx = cv2.approxPolyDP(contour, epsilon, True).reshape(-1, 2)
-    if len(approx) < 3:
-        approx = points.reshape(-1, 2)
-    return [
-        [round(float(x) / max(width, 1), 5), round(float(y) / max(height, 1), 5)]
-        for x, y in approx
-    ]
-
-
 def parse_detections(result, width: int, height: int) -> list[dict]:
     """Turn one Ultralytics Result into plain dicts + binary masks.
 
     Each dict carries a ``_mask`` key (uint8 HxW, 0/1) used for rendering; it is
     stripped before the response is serialized.
+
+    ``source`` is "model" on everything produced here. A manual mask correction
+    adds entries marked "manual" later, and the confidence figures the API
+    reports are aggregated over the model's own detections only — see
+    ``run_inference``.
+
+    Polygon simplification lives in ``mask_correction.simplify_polygon`` because
+    the corrector has to emit polygons in exactly the same shape and fidelity as
+    these; if the two drifted apart, applying a correction would quietly change
+    how every polygon in the response was approximated.
     """
     detections: list[dict] = []
     boxes = getattr(result, "boxes", None)
@@ -422,7 +445,7 @@ def parse_detections(result, width: int, height: int) -> list[dict]:
                     binary, (width, height), interpolation=cv2.INTER_NEAREST
                 )
             if mask_polys is not None and i < len(mask_polys):
-                polygon = _simplify_polygon(np.asarray(mask_polys[i]), width, height)
+                polygon = simplify_polygon(np.asarray(mask_polys[i]), width, height)
             area = float(binary.sum())
         else:
             # Detection-only model: fall back to the box as a rectangular region.
@@ -446,6 +469,8 @@ def parse_detections(result, width: int, height: int) -> list[dict]:
                 "polygon": polygon,
                 "area_ratio": round(area / frame_area, 4),
                 "is_wall": segmentation_model.is_wall_class(class_name),
+                "source": "model",
+                "corrected": False,
                 "_mask": binary,
             }
         )
@@ -460,6 +485,10 @@ def resolve_wall(detections: list[dict]) -> bool:
     not (e.g. a single-class model named something else), we fall back to the
     largest-area mask and report ``wall_class_inferred`` so the UI can say so
     rather than implying the model named it.
+
+    Runs before any mask correction: a manually drawn region must never win the
+    largest-area vote, or brushing on a model with no wall class would relabel
+    the operator's own stroke as "the wall the model found".
     """
     if not detections:
         return False
@@ -521,7 +550,14 @@ def render_overlay(frame: np.ndarray, detections: list[dict], mode: str) -> np.n
         contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         cv2.drawContours(out, contours, -1, color, 2)
 
-        label = f"{det['class_name']} {det['confidence']:.2f}"
+        # Manually corrected regions carry no confidence — labelling one with a
+        # number would put a score on something the model never scored.
+        confidence = det.get("confidence")
+        label = (
+            f"{det['class_name']} {confidence:.2f}"
+            if confidence is not None
+            else str(det["class_name"])
+        )
         x1, y1 = int(det["bbox"][0]), int(det["bbox"][1])
         (tw, th), _ = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.5, 1)
         y_text = max(th + 6, y1)
@@ -553,8 +589,27 @@ def banner_frame(width: int, height: int, lines: list[str]) -> np.ndarray:
 # Core inference entry point
 # --------------------------------------------------------------------------- #
 
-def run_inference(frame: np.ndarray, overlay: str, source: str) -> dict:
-    """Segment one frame and build the full response payload (minus base64)."""
+def run_inference(
+    frame: np.ndarray,
+    overlay: str,
+    source: str,
+    correction=None,
+) -> dict:
+    """Segment one frame and build the full response payload (minus base64).
+
+    ``correction`` is an optional ``MaskCorrection`` (the operator's brush
+    strokes). It is applied to the detection list right after inference, which
+    is the single point every consumer downstream reads from — the overlay
+    render, the mm-space polygons that become G-code, and the colour
+    recommender's non-wall clustering all see the corrected mask without
+    knowing a correction happened.
+
+    Confidence stays a measurement of the *model*: both figures are aggregated
+    over model detections only, so a hand-drawn region can never raise (or
+    invent) a reported confidence. Coverage is the opposite case — it describes
+    the mask that will actually be painted, so corrections are included in it,
+    and ``mask_correction`` in the response says by how much.
+    """
     height, width = frame.shape[:2]
 
     start = time.perf_counter()
@@ -564,10 +619,20 @@ def run_inference(frame: np.ndarray, overlay: str, source: str) -> dict:
     detections = parse_detections(result, width, height)
     wall_inferred = resolve_wall(detections)
 
+    correction_stats = None
+    if correction:
+        detections, correction_stats = apply_correction(detections, correction, frame)
+
     wall_dets = [d for d in detections if d["is_wall"]]
+    model_confidences = [
+        d["confidence"] for d in detections if d.get("confidence") is not None
+    ]
+    wall_confidence = max(
+        (d["confidence"] for d in wall_dets if d.get("confidence") is not None),
+        default=None,
+    )
+    top_confidence = max(model_confidences, default=None)
     wall_detected = len(wall_dets) > 0
-    wall_confidence = max((d["confidence"] for d in wall_dets), default=None)
-    top_confidence = max((d["confidence"] for d in detections), default=None)
     wall_coverage = round(sum(d["area_ratio"] for d in wall_dets), 4) if wall_dets else 0.0
 
     overlay_image = render_overlay(frame, detections, overlay)
@@ -588,6 +653,7 @@ def run_inference(frame: np.ndarray, overlay: str, source: str) -> dict:
         "top_confidence": top_confidence,
         "wall_coverage": wall_coverage,
         "wall_class_inferred": wall_inferred,
+        "mask_correction": correction_stats,
         "inference_ms": round(inference_ms, 1),
         "width": width,
         "height": height,
@@ -614,7 +680,8 @@ def segmentation_response(frame: np.ndarray, result: dict, overlay: str) -> dict
 
     ``confidence`` is the wall's confidence when a wall was found, falling back
     to the top detection otherwise, and is 0.0 rather than null on an empty
-    frame so the UI can format it without a null check.
+    frame so the UI can format it without a null check. It always describes the
+    model; a manual correction changes the mask, never the score.
     """
     original_b64 = encode_jpeg_b64(frame)
     masked_b64 = encode_jpeg_b64(result["overlay_image"])
@@ -641,6 +708,9 @@ def segmentation_response(frame: np.ndarray, result: dict, overlay: str) -> dict
         "top_confidence": result["top_confidence"],
         "wall_coverage": result["wall_coverage"],
         "wall_class_inferred": result["wall_class_inferred"],
+        # null when no correction was sent — so a caller can always tell an
+        # untouched model output from a hand-patched one.
+        "mask_correction": result["mask_correction"],
         "overlay_mode": overlay,
         "image_width": result["width"],
         "image_height": result["height"],
@@ -726,9 +796,18 @@ def api_segment():
     overlay = normalize_overlay(request.form.get("overlay") or request.args.get("overlay"))
 
     try:
-        result = run_inference(frame, overlay, source="upload")
+        correction = correction_from_request()
+    except CorrectionError as exc:
+        return jsonify({"success": False, "error": str(exc)}), 400
+
+    try:
+        result = run_inference(frame, overlay, source="upload", correction=correction)
     except ModelLoadError as exc:
         return jsonify({"success": False, "model_loaded": False, "error": str(exc)}), 503
+    except SmartSelectError as exc:
+        return jsonify({"success": False, "error": str(exc)}), 400
+    except SmartSelectUnavailable as exc:
+        return jsonify({"success": False, "error": str(exc)}), 503
     except Exception as exc:
         logger.exception("Inference failed")
         return (
@@ -739,6 +818,148 @@ def api_segment():
     # Raw base64 JPEG payloads. The frontend prefixes them with
     # "data:image/jpeg;base64," before assigning to img.src.
     return jsonify(segmentation_response(frame, result, overlay))
+
+
+# --------------------------------------------------------------------------- #
+# API — POST /api/smart-select
+#
+# "Click a point, get a region" for the mask-correction brush. This does NOT
+# apply anything: it answers with the outline the click resolves to, so the
+# editor can show it before the operator commits. The correction itself still
+# stores the click, and /api/segment or /api/toolpath re-resolves it — this
+# endpoint exists purely so the preview can be drawn without the browser having
+# to run a segmentation model of its own.
+#
+# Engine is "auto" unless forced. The response says which one actually ran so
+# the editor can record it, which is what stops a later replay from silently
+# resolving the same click with a different engine.
+# --------------------------------------------------------------------------- #
+
+@app.route("/api/smart-select", methods=["POST"])
+def api_smart_select():
+    frame, error = frame_from_request()
+    if error is not None:
+        return error
+
+    height, width = frame.shape[:2]
+
+    try:
+        engine = normalize_engine(
+            request.form.get("engine") or request.args.get("engine")
+        )
+    except SmartSelectError as exc:
+        return jsonify({"success": False, "error": str(exc)}), 400
+
+    raw_points = request.form.get("points") or request.args.get("points")
+    if not raw_points:
+        return (
+            jsonify(
+                {
+                    "success": False,
+                    "error": "No 'points' field. Send a JSON array of normalized "
+                             "[x, y] pairs — the point(s) clicked on the image.",
+                }
+            ),
+            400,
+        )
+
+    try:
+        points = json.loads(raw_points)
+    except ValueError as exc:
+        return jsonify({"success": False, "error": f"'points' is not valid JSON: {exc}"}), 400
+
+    raw_labels = request.form.get("labels") or request.args.get("labels")
+    labels = None
+    if raw_labels:
+        try:
+            labels = json.loads(raw_labels)
+        except ValueError as exc:
+            return (
+                jsonify({"success": False, "error": f"'labels' is not valid JSON: {exc}"}),
+                400,
+            )
+
+    if not isinstance(points, list) or not points:
+        return (
+            jsonify({"success": False, "error": "'points' must be a non-empty array."}),
+            400,
+        )
+    if labels is None:
+        labels = [1] * len(points)
+    if not isinstance(labels, list) or len(labels) != len(points):
+        return (
+            jsonify(
+                {
+                    "success": False,
+                    "error": f"'labels' must be an array the same length as points "
+                             f"({len(points)}).",
+                }
+            ),
+            400,
+        )
+
+    try:
+        tolerance = int(
+            request.form.get("tolerance")
+            or request.args.get("tolerance")
+            or DEFAULT_WAND_TOLERANCE
+        )
+    except (TypeError, ValueError):
+        return (
+            jsonify({"success": False, "error": "'tolerance' must be an integer 0-100."}),
+            400,
+        )
+
+    start = time.perf_counter()
+    try:
+        mask, engine_used = select_region(
+            frame, points, labels, engine=engine, tolerance=tolerance
+        )
+    except SmartSelectError as exc:
+        return jsonify({"success": False, "error": str(exc)}), 400
+    except SmartSelectUnavailable as exc:
+        return jsonify({"success": False, "error": str(exc)}), 503
+    except Exception as exc:
+        logger.exception("Smart select failed")
+        return jsonify({"success": False, "error": f"{type(exc).__name__}: {exc}"}), 500
+    elapsed_ms = (time.perf_counter() - start) * 1000.0
+
+    # Outlines rather than a bitmap: the editor draws them straight onto its
+    # preview canvas, and one polygon per blob is a few hundred bytes against a
+    # few hundred KB for a full-resolution PNG.
+    area_px = int(mask.sum())
+    polygons: list[list[list[float]]] = []
+    if area_px:
+        contours, _ = cv2.findContours(
+            mask.astype(np.uint8), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
+        )
+        for contour in sorted(contours, key=cv2.contourArea, reverse=True):
+            polygon = simplify_polygon(contour.reshape(-1, 2), width, height)
+            if polygon:
+                polygons.append(polygon)
+
+    area_ratio = round(area_px / float(width * height or 1), 4)
+
+    return jsonify(
+        {
+            "success": True,
+            "engine": engine_used,
+            "engine_requested": engine,
+            "polygons": polygons,
+            "region_count": len(polygons),
+            "area_px": area_px,
+            "area_ratio": area_ratio,
+            # A selection covering nearly the whole frame is almost always a
+            # flood fill that leaked past an edge. Said plainly so the UI can
+            # warn rather than the operator discovering it in the G-code.
+            "looks_like_a_leak": engine_used == "wand" and area_ratio > 0.85,
+            "empty": area_px == 0,
+            "tolerance": tolerance,
+            "image_width": width,
+            "image_height": height,
+            "elapsed_ms": round(elapsed_ms, 1),
+        }
+    )
 
 
 # --------------------------------------------------------------------------- #
@@ -781,10 +1002,20 @@ def api_recommend_colors():
         request.form.get("category") or request.args.get("category")
     )
 
+    # Accepted here for the same reason it is accepted on /api/toolpath: the
+    # palette is clustered from everything that is NOT wall, so a mask the
+    # operator corrected changes which pixels the room's colour is read from.
+    # No page posts it yet — colour-recommendation.html has no brush — but the
+    # contract is the mask, and it is one mask per image across every consumer.
+    try:
+        correction = correction_from_request()
+    except CorrectionError as exc:
+        return jsonify({"success": False, "error": str(exc)}), 400
+
     try:
         # overlay="pre" — we need the masks, not a rendered overlay, so skip the
         # drawing work entirely.
-        result = run_inference(frame, "pre", source="recommend")
+        result = run_inference(frame, "pre", source="recommend", correction=correction)
         palette = recommend_colors(
             frame,
             result["detections"],
@@ -793,6 +1024,10 @@ def api_recommend_colors():
         )
     except ModelLoadError as exc:
         return jsonify({"success": False, "model_loaded": False, "error": str(exc)}), 503
+    except SmartSelectError as exc:
+        return jsonify({"success": False, "error": str(exc)}), 400
+    except SmartSelectUnavailable as exc:
+        return jsonify({"success": False, "error": str(exc)}), 503
     except Exception as exc:
         logger.exception("Colour recommendation failed")
         return jsonify({"success": False, "error": f"{type(exc).__name__}: {exc}"}), 500
@@ -821,6 +1056,7 @@ def api_recommend_colors():
         "wall_detected": result["wall_detected"],
         "wall_confidence": result["wall_confidence"],
         "wall_coverage": result["wall_coverage"],
+        "mask_correction": result["mask_correction"],
         "detection_count": len(result["detections"]),
         "inference_ms": result["inference_ms"],
         "device": segmentation_model.device,
@@ -903,8 +1139,13 @@ def api_toolpath():
         return jsonify({"success": False, "error": str(exc)}), 400
 
     try:
+        correction = correction_from_request()
+    except CorrectionError as exc:
+        return jsonify({"success": False, "error": str(exc)}), 400
+
+    try:
         # overlay="pre" — the masks are what we need; skip the drawing work.
-        result = run_inference(frame, "pre", source="toolpath")
+        result = run_inference(frame, "pre", source="toolpath", correction=correction)
 
         wall_polygons = [
             calibration.polygon_to_mm(det["polygon"])
@@ -925,6 +1166,14 @@ def api_toolpath():
         # Missing geometry dependency — the server cannot do this at all, which
         # is the same class of problem as missing weights.
         logger.error("Toolpath generation unavailable: %s", exc)
+        return jsonify({"success": False, "error": str(exc)}), 503
+    except SmartSelectError as exc:
+        # A saved smart selection naming an engine this server does not have.
+        # 400 with "re-run the selection" rather than substituting an engine:
+        # geometry that silently changed is geometry the operator never saw,
+        # and here it becomes G-code.
+        return jsonify({"success": False, "error": str(exc)}), 400
+    except SmartSelectUnavailable as exc:
         return jsonify({"success": False, "error": str(exc)}), 503
     except CalibrationError as exc:
         return jsonify({"success": False, "error": str(exc)}), 400
@@ -951,6 +1200,10 @@ def api_toolpath():
         "wall_confidence": result["wall_confidence"],
         "wall_polygon_count": len(wall_polygons),
         "obstacle_polygon_count": len(obstacle_polygons),
+        # null unless the operator brushed the mask. When set, the wall and
+        # obstacle counts above already include the hand-drawn regions, and this
+        # says how much of the plan came from the brush rather than the model.
+        "mask_correction": result["mask_correction"],
         # The subtracted regions, in mm. Returned so a viewer can show what the
         # path routed around — the claim is only checkable if you can see the
         # obstacles next to the path that avoids them.
@@ -1095,6 +1348,10 @@ def api_status():
         "camera_streaming": camera.is_streaming,
         "robot_status": robot_status,
         "robot_status_class": badge,
+        # Which smart-select engine the mask editor will get. Reported before
+        # the first click so the UI can label the tool honestly rather than
+        # promising MobileSAM and delivering a flood fill.
+        "smart_select": smart_select_status(),
         "last_inference": telemetry.snapshot(),
         "torch_version": torch_facts["torch_version"],
         "torch_cuda_version": torch_facts["torch_cuda_version"],
@@ -1197,6 +1454,14 @@ def startup_report() -> None:
         print("  Model         : NOT LOADED")
         print(f"                  {segmentation_model.error}")
 
+    smart = smart_select_status()
+    if smart["sam"]["available"]:
+        print(f"  Smart select  : MobileSAM ({smart['sam']['model']}, imgsz "
+              f"{smart['sam']['imgsz']}) — loads on first click")
+    else:
+        print("  Smart select  : colour wand only (flood fill)")
+        print(f"                  {smart['sam']['error']}")
+
     print(f"  Camera        : {'AVAILABLE' if cam_ok else 'UNAVAILABLE'}"
           + (f" (index {camera.index}, {camera.backend_name})" if cam_ok else ""))
     if not cam_ok and cam_err:
@@ -1206,7 +1471,8 @@ def startup_report() -> None:
     print("  Endpoints     : POST /api/segment   GET /api/stream?overlay=pre|during|post")
     print("                  GET  /api/status    GET /api/capture")
     print("                  POST /api/recommend-colors")
-    print("                  POST /api/toolpath")
+    print("                  POST /api/toolpath   POST /api/smart-select")
+    print("  Mask editing  : optional 'mask_correction' field on the POST endpoints")
     print(f"  CORS          : enabled for all origins (file:// pages included)")
     print(line)
     print()

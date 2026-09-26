@@ -1200,6 +1200,167 @@ main {
 }
 
 /* ---------------------------------------------------------------------- */
+/* Manual mask correction (brush tool)                                     */
+/*                                                                         */
+/* A modal rather than an inline panel for two reasons: the brush needs the */
+/* frame shown UNCROPPED (the .video-panel above it uses object-fit: cover, */
+/* so a click there would not map onto a known image pixel), and one shared */
+/* editor is the honest shape for one shared corrected mask — the Upload    */
+/* and Toolpath views open the same element, not a copy each.              */
+/* ---------------------------------------------------------------------- */
+
+.correction-note {
+  margin: 12px 0 0;
+  padding: 10px 14px;
+  border-radius: var(--radius);
+  background: rgba(34, 197, 94, 0.1);
+  border: 1px solid rgba(34, 197, 94, 0.35);
+  color: #86EFAC;
+  font-size: 0.85rem;
+}
+
+.mask-editor {
+  position: fixed;
+  inset: 0;
+  z-index: 900;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(2, 8, 20, 0.82);
+  overflow: auto;
+}
+
+.mask-editor[hidden] {
+  display: none;
+}
+
+.mask-editor-dialog {
+  width: 100%;
+  max-width: 1080px;
+  max-height: 92vh;
+  overflow: auto;
+  padding: 22px 24px 24px;
+  border-radius: var(--radius);
+  border: 1px solid var(--panel-border);
+  background: var(--panel);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.55);
+}
+
+.mask-editor-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 6px;
+}
+
+.mask-editor-head h3 {
+  margin: 0;
+  font-size: 1.2rem;
+}
+
+.mask-editor-stage {
+  position: relative;
+  margin-top: 14px;
+  border-radius: var(--radius);
+  border: 1px solid var(--panel-border);
+  background: #081120;
+  overflow: hidden;
+}
+
+/* touch-action: none is required, not cosmetic — without it a drag on a
+   touchscreen scrolls the page instead of drawing a stroke. */
+.mask-editor-stage canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  cursor: crosshair;
+  touch-action: none;
+}
+
+.mask-editor-loading {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(8, 17, 32, 0.78);
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}
+
+.mask-editor-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 20px;
+  margin-top: 16px;
+}
+
+.mask-editor-tools .field-row {
+  margin-top: 0;
+}
+
+.mask-editor-tools input[type="range"] {
+  width: 170px;
+  accent-color: var(--accent);
+}
+
+.mask-editor-size {
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  min-width: 150px;
+}
+
+.mask-editor-group-label {
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  align-self: center;
+}
+
+/* Names the engine that will actually resolve a click. Shown rather than
+   assumed: on a machine without the MobileSAM weights the tool silently
+   becomes a flood fill, and the label is what keeps that honest. */
+.mask-engine-badge {
+  align-self: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(56, 189, 248, 0.45);
+  background: rgba(56, 189, 248, 0.12);
+  color: #7DD3FC;
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+}
+
+#mask-tool-smart.is-active {
+  background: rgba(56, 189, 248, 0.2);
+  border-color: rgba(56, 189, 248, 0.6);
+  color: #7DD3FC;
+}
+
+/* The brush-mode toggles carry the same colours as the overlay legend, so
+   "add" and "erase" read as wall / not-wall before the button label does. */
+#mask-add.is-active {
+  background: rgba(34, 197, 94, 0.22);
+  border-color: rgba(34, 197, 94, 0.6);
+  color: #86EFAC;
+}
+
+#mask-erase.is-active {
+  background: var(--amber-bg);
+  border-color: var(--amber-border);
+  color: #FCD34D;
+}
+
+body.is-modal-open {
+  overflow: hidden;
+}
+
+/* ---------------------------------------------------------------------- */
 /* Responsive */
 /* ---------------------------------------------------------------------- */
 
