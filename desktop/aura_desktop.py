@@ -96,11 +96,18 @@ def log_dir() -> str:
 
 
 def backend_environment(ui_dir: str) -> dict[str, str]:
-    """Settings the backend reads at import time, for the desktop layout."""
+    """Settings the backend reads at import time, for the desktop layout.
+
+    The two YOLO_* switches stop Ultralytics from pip-installing packages or
+    probing the internet at runtime. In the packaged app "run pip with this
+    Python" would mean launching AURA.exe again, and the app must work offline.
+    """
     return {
         "AURA_HOST": HOST,
         "AURA_WEB_DIR": ui_dir,
         "AURA_HOME_PAGE": HOME_PAGE,
+        "YOLO_AUTOINSTALL": "false",
+        "YOLO_OFFLINE": "true",
     }
 
 

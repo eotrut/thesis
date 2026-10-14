@@ -105,3 +105,30 @@ Nothing in this note has been implemented. No code or other vault notes were cha
 **Bug found and fixed during the stage:** the first Dashboard status poll timed out at startup because the startup device report probed the webcam at the same moment. The report now runs before the page opens.
 
 **Known, deferred to later stages:** the app copies still load the Michroma font from Google Fonts (online), so offline it falls back to a system font. Bundled fonts come in Stage 4.
+
+### Stage 2: Windows packages, CPU and CUDA (2026-10-14)
+**Status:** both built and tested on Kurt's laptop. Not committed yet (waiting for Kurt's OK).
+
+**Measured sizes** (including `best.pt` and `mobile_sam.pt`; the earlier estimates were unmeasured):
+
+| | CPU build (to hand out) | CUDA build (RTX 3050 laptop) |
+|---|---|---|
+| Unpacked | **581 MB** (estimate was 1–1.3 GB) | **3.74 GB** (estimate was 5–6 GB) |
+| Zipped | **243 MB** (estimate was 400–600 MB) | **2.33 GB** (estimate was 2.5–3.5 GB) |
+| Build time | ~3.5 min | ~6 min |
+
+**How to build:** `py -3.11 desktop/build.py cpu --zip` or `... gpu --zip`. The output goes to `desktop/dist/AURA-CPU/` (or `AURA-GPU/`) plus a zip; all of it is git-ignored. One PyInstaller recipe (`desktop/aura.spec`) serves both builds. The only difference is which torch the clean build venv holds (`2.5.1+cpu` or `2.5.1+cu121`). The output is a folder (`AURA.exe` + `_internal\`), not a single file, so nothing is unpacked to temp on every launch. The weights are copied into `model\` next to `AURA.exe`. Each build carries `README-FIRST.txt` (how to start it, the unknown-publisher warning, camera privacy settings) and `BUILD-INFO.txt` (exact package versions and the git commit).
+
+**Left out:** roboflow, pandas, tensorboard and pyserial are never installed in the build venvs. polars is excluded from the bundle, as are ultralytics' tracking and "solutions" modules.
+
+**Problem found and fixed:** on the first CPU build, PyInstaller's scan imported `ultralytics.trackers`. That module calls `check_requirements("lap")` on import, and Ultralytics' auto-install pip-installed `lap` into the build venv. Inside the packaged app the same call would run "pip" with `AURA.exe` as the Python, i.e. relaunch the app. Fixes:
+- trackers and solutions are excluded from the bundle
+- `YOLO_AUTOINSTALL=false` and `YOLO_OFFLINE=true` are set at build time and inside the app
+- `lap` was removed from the venv
+- a new test check guards this (`test_desktop_shell.py` is now 10/10).
+
+**Tested (2026-10-14)**
+- **CPU build, without Python:** copied to a folder outside the project and started with Python removed from `PATH` and no `PYTHON*` variables. Ready in 12 s and logged `Inference device: CPU`. Of the 210 DLLs loaded, the only one from outside the app folder and `C:\Windows` was Windows' own WebView2 runtime. All endpoints returned 200 (segment 0.21 s, recommend-colors, toolpath, MobileSAM smart select 1.7 s, wand). `/index.html` returned 404. The built-in HP camera worked with no permission prompt. Closing the window ended the process, freed the port and left no `AURA.exe` behind.
+- **CUDA build, same test:** ready in 11 s on `cuda:0`, RTX 3050. Segment 0.16 s, MobileSAM 0.69 s, clean exit.
+- **CUDA build with the GPU hidden** (`CUDA_VISIBLE_DEVICES=-1`): falls back to `Inference device: CPU` and runs.
+- **Not yet tested:** a second laptop that has never had Python installed. Nothing above depended on this machine's Python, but that is the real-world check. Kurt's laptop also cannot show the SmartScreen warning, because locally built files don't carry the "downloaded from the internet" mark; recipients will see it.

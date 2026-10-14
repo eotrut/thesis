@@ -25,12 +25,51 @@ python desktop/aura_desktop.py
 
 A "Starting AURA…" screen shows while PyTorch and the model load (about 5–10 s on the RTX 3050 laptop), then the Dashboard opens. The **Inference Device** card shows whether the model is running on CUDA or the CPU.
 
+## Build the Windows app (AURA.exe)
+
+```powershell
+py -3.11 desktop/build.py cpu --zip     # small build to hand out
+py -3.11 desktop/build.py gpu --zip     # CUDA build for the RTX 3050 laptop
+```
+
+Output goes to `desktop/dist/AURA-CPU/` (or `AURA-GPU/`) plus a `.zip` of it. Both folders are git-ignored. The first build of each flavour downloads torch into a clean build venv under `desktop/build/` (also git-ignored). Add `--skip-install` to reuse that venv on later builds.
+
+| | CPU build | CUDA build |
+|---|---|---|
+| Who it's for | anyone, any Windows laptop | Kurt's RTX 3050 laptop |
+| torch | 2.5.1+cpu | 2.5.1+cu121 |
+| Unpacked size | **581 MB** | **3.74 GB** |
+| Zipped size | **243 MB** | **2.33 GB** |
+| Build time | ~3.5 min | ~6 min |
+
+These sizes were measured on 2026-10-14 and include `best.pt` and `mobile_sam.pt`. The CUDA build is bigger because PyTorch's CUDA wheel carries NVIDIA's GPU libraries (cuDNN, cuBLAS and others). On a laptop without an NVIDIA GPU it still runs, on the CPU.
+
+How the build is put together:
+- **One recipe, two packages.** `aura.spec` is the PyInstaller recipe for both. The only difference is which torch the build venv has, so the code is identical.
+- **Folder, not single file.** The output is `AURA.exe` plus an `_internal\` folder (PyInstaller "onedir" mode). A single-file exe would unpack hundreds of MB to a temp folder on every launch.
+- **Weights sit next to the exe.** `build.py` copies `website/model/best.pt` and `mobile_sam.pt` into `model\` beside `AURA.exe`, where they can be swapped without rebuilding. They are git-ignored, so the build stops with a message if they are missing.
+- **Training-only libraries are left out.** roboflow, pandas, tensorboard and pyserial are never installed in the build venvs. ultralytics' tracking and dashboard modules are excluded from the bundle.
+- **No installs or online checks at runtime.** The app turns off Ultralytics' auto-install and online checks (`YOLO_AUTOINSTALL=false`, `YOLO_OFFLINE=true`). On the first build, ultralytics' tracker module pip-installed a package into the build venv during analysis. Inside the packaged app that same call would relaunch `AURA.exe`.
+- **Exact versions are recorded.** `BUILD-INFO.txt` in each build lists every package version and the git commit it was built from.
+
+### "Windows protected your PC" (unknown publisher)
+
+`AURA.exe` is not code-signed. A signing certificate costs money and has to be tied to a verified publisher. So the first time someone runs a copy downloaded from the internet or a chat app, Windows SmartScreen shows **"Windows protected your PC… Unknown publisher"**. This is expected for an unsigned student project. Click **More info → Run anyway**. Some antivirus programs also scan a large unsigned app slowly on its first start. `README-FIRST.txt`, shipped inside each build, tells recipients the same thing.
+
+### Testing the CPU build without Python
+
+To test the build the way it will run elsewhere: copy `AURA-CPU` to a folder outside the project, then start `AURA.exe` with Python removed from `PATH` and no `PYTHON*` variables set. While it runs, list the DLLs the process has loaded. Everything should come from the app folder or `C:\Windows`, except Windows' own WebView2 runtime. This was done on 2026-10-14; see the vault build log. The real test is still a second laptop with no Python on it.
+
 ## Glossary
 
 - **pywebview**: a Python library that opens a desktop window with a web page inside. On Windows it uses **WebView2**.
 - **WebView2**: Microsoft Edge's browser engine, packaged so apps can embed it. It is built into Windows 10 (21H2 and later) and Windows 11, so nothing extra needs installing.
 - **127.0.0.1**: this computer only. The app's server cannot be reached from the network. `python backend/app.py` binds `0.0.0.0`, which means "every network interface".
 - **Free port**: the app asks Windows for any unused port number, so it never collides with the website backend on 5000 or with a second copy of AURA.
+- **PyInstaller**: a tool that packs a Python program, the Python interpreter and every library it uses into a folder with an `.exe`, so the target PC needs no Python.
+- **venv (virtual environment)**: a private, self-contained Python install with only the packages you put in it. The builds each use their own clean venv, so nothing from the development venv leaks into the app.
+- **Hook**: a small recipe PyInstaller uses for a specific library, telling it which hidden files (DLLs, data) that library needs at runtime.
+- **CUDA**: NVIDIA's system for running computations on the graphics card. "CPU build" means torch without CUDA; "CUDA build" means torch with NVIDIA's GPU libraries included.
 
 ## Camera
 

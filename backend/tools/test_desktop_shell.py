@@ -217,6 +217,37 @@ def check_port_parsing(verbose: bool) -> list[str]:
     return failures
 
 
+def check_no_runtime_installs(verbose: bool) -> list[str]:
+    """Ultralytics must never pip-install or go online inside the app.
+
+    In a frozen app, Ultralytics' auto-install runs `sys.executable -m pip`,
+    and sys.executable is AURA.exe, so a stray check_requirements() would
+    relaunch the app instead of installing anything. The first CPU build
+    caught it installing `lap` into the build venv this way.
+    """
+    env = shell.backend_environment(UI_DIR)
+    failures = []
+    if env.get("YOLO_AUTOINSTALL") != "false":
+        failures.append(f"YOLO_AUTOINSTALL={env.get('YOLO_AUTOINSTALL')!r}, expected 'false'")
+    if env.get("YOLO_OFFLINE") != "true":
+        failures.append(f"YOLO_OFFLINE={env.get('YOLO_OFFLINE')!r}, expected 'true'")
+    if failures:
+        return failures
+
+    code = f"""
+import json, sys
+sys.path.insert(0, {BACKEND_DIR!r})
+import ultralytics.utils as u
+print(json.dumps({{"autoinstall": u.AUTOINSTALL, "online": bool(u.is_online())}}))
+"""
+    got = run_child(code, env)
+    if got["autoinstall"] is not False:
+        failures.append("ultralytics AUTOINSTALL still on under the app's environment")
+    if got["online"] is not False:
+        failures.append("ultralytics still reports itself online under YOLO_OFFLINE")
+    return failures
+
+
 def check_desktop_page_set(verbose: bool) -> list[str]:
     """desktop/ui holds the three app pages only, and nothing links elsewhere."""
     failures = []
@@ -372,6 +403,7 @@ CHECKS = [
     ("display_path survives another drive", check_display_path_other_drive),
     ("camera auto-allow matches own origin only", check_origin_guard),
     ("AURA_DESKTOP_PORT parsing", check_port_parsing),
+    ("app disables Ultralytics auto-install / online checks", check_no_runtime_installs),
     ("desktop/ui holds only the three app pages", check_desktop_page_set),
     ("desktop serves app pages; website mode unchanged", check_serving_modes),
     ("server: 127.0.0.1, free port, clean shutdown", check_server_lifecycle),

@@ -1,0 +1,7 @@
+# AURA desktop — CPU-only build (the one to hand out).
+# PyTorch's CPU wheels contain no CUDA libraries, which is most of the size
+# difference between the two builds. Inference runs on the CPU on every machine.
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch==2.5.1+cpu
+torchvision==0.20.1+cpu
+-r requirements-build-common.txt

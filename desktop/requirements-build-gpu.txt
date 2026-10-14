@@ -1,0 +1,8 @@
+# AURA desktop — CUDA build (Kurt's RTX 3050 laptop).
+# Same torch pair as backend/requirements.txt. The +cu121 wheels carry the
+# CUDA 12.1 runtime inside them, so the target needs only an NVIDIA driver
+# >= 530, not the CUDA toolkit. Without a usable GPU it falls back to the CPU.
+--extra-index-url https://download.pytorch.org/whl/cu121
+torch==2.5.1+cu121
+torchvision==0.20.1+cu121
+-r requirements-build-common.txt
