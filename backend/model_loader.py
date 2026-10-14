@@ -49,15 +49,16 @@ from typing import Any
 
 import numpy as np
 
+from app_paths import FROZEN, MODEL_DIR, PROJECT_ROOT, display_path, model_file
+
 logger = logging.getLogger("aura.model")
 
 # --------------------------------------------------------------------------- #
-# Paths — everything is derived from this file's location, nothing hardcoded.
+# Paths — resolved by app_paths, which knows whether this is the source tree
+# (website/model/) or the packaged app (model/ next to AURA.exe).
 # --------------------------------------------------------------------------- #
 
-BACKEND_DIR = os.path.dirname(os.path.abspath(__file__))
-PROJECT_ROOT = os.path.dirname(BACKEND_DIR)
-DEFAULT_MODEL_PATH = os.path.join(PROJECT_ROOT, "website", "model", "best.pt")
+DEFAULT_MODEL_PATH = model_file("best.pt")
 
 # Where the trained weights live. Override with AURA_MODEL_PATH if you keep a
 # second checkpoint around (e.g. comparing Kaggle runs for Chapter 4).
@@ -69,7 +70,7 @@ MODEL_PATH = os.environ.get("AURA_MODEL_PATH") or DEFAULT_MODEL_PATH
 # baseline from the vault notes) — useful for wiring/UI tests, NOT for results.
 ALLOW_FALLBACK = os.environ.get("AURA_ALLOW_FALLBACK", "0").lower() in ("1", "true", "yes")
 FALLBACK_MODEL_PATH = os.environ.get("AURA_FALLBACK_MODEL") or os.path.join(
-    PROJECT_ROOT, "yolov8n-seg.pt"
+    MODEL_DIR if FROZEN else PROJECT_ROOT, "yolov8n-seg.pt"
 )
 
 # --------------------------------------------------------------------------- #
@@ -234,7 +235,7 @@ class SegmentationModel:
         if os.path.isfile(self.model_path):
             return self.model_path
 
-        rel = os.path.relpath(self.model_path, PROJECT_ROOT)
+        rel = display_path(self.model_path)
         if ALLOW_FALLBACK and os.path.isfile(FALLBACK_MODEL_PATH):
             self.using_fallback = True
             logger.warning(
@@ -242,7 +243,7 @@ class SegmentationModel:
                 "baseline %s because AURA_ALLOW_FALLBACK is set. Results from "
                 "this model are NOT the fine-tuned AURA model.",
                 rel,
-                os.path.relpath(FALLBACK_MODEL_PATH, PROJECT_ROOT),
+                display_path(FALLBACK_MODEL_PATH),
             )
             return FALLBACK_MODEL_PATH
 
@@ -320,7 +321,7 @@ class SegmentationModel:
         """Serializable snapshot for /api/status."""
         return {
             "model_loaded": self.is_loaded,
-            "model_path": os.path.relpath(self.model_path, PROJECT_ROOT).replace("\\", "/"),
+            "model_path": display_path(self.model_path).replace("\\", "/"),
             "model_error": self.error,
             "using_fallback_model": self.using_fallback,
             "task": self.task,

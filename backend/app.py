@@ -67,8 +67,8 @@ from mask_correction import (  # noqa: E402
     parse_correction,
     simplify_polygon,
 )
+from app_paths import PROJECT_ROOT, RESOURCE_ROOT, display_path  # noqa: E402
 from model_loader import (  # noqa: E402
-    PROJECT_ROOT,
     ModelLoadError,
     load_model,
     segmentation_model,
@@ -93,7 +93,10 @@ from toolpath_generator import (  # noqa: E402
 # Configuration
 # --------------------------------------------------------------------------- #
 
-WEBSITE_DIR = os.path.join(PROJECT_ROOT, "website")
+# The desktop app (desktop/aura_desktop.py) points these at its own page set;
+# from source with no env vars set, the server hosts website/ exactly as before.
+WEBSITE_DIR = os.environ.get("AURA_WEB_DIR") or os.path.join(RESOURCE_ROOT, "website")
+HOME_PAGE = os.environ.get("AURA_HOME_PAGE", "index.html")
 
 HOST = os.environ.get("AURA_HOST", "0.0.0.0")
 PORT = int(os.environ.get("AURA_PORT", "5000"))
@@ -304,6 +307,22 @@ class Camera:
             return None
         finally:
             self.release()
+
+    def close(self, timeout: float = 2.0) -> bool:
+        """Release the webcam whatever the viewer count (desktop app shutdown).
+
+        Bounded wait: a stream thread can be sitting inside ``read()`` holding
+        the lock, and shutdown must not hang on it. Returns False if the lock
+        was not obtained; the OS frees the device when the process exits.
+        """
+        if not self._lock.acquire(timeout=timeout):
+            return False
+        try:
+            self._viewers = 0
+            self._release_locked()
+            return True
+        finally:
+            self._lock.release()
 
     @property
     def is_streaming(self) -> bool:
@@ -1398,7 +1417,7 @@ def api_capture():
 
 @app.route("/")
 def index():
-    return send_from_directory(WEBSITE_DIR, "index.html")
+    return send_from_directory(WEBSITE_DIR, HOME_PAGE)
 
 
 @app.errorhandler(413)
@@ -1429,7 +1448,7 @@ def startup_report() -> None:
     print("  AURA — Autonomous Unified Robotic Adaptive · Backend API")
     print(line)
     print(f"  Server        : http://localhost:{PORT}")
-    print(f"  Website       : http://localhost:{PORT}/index.html")
+    print(f"  Website       : http://localhost:{PORT}/{HOME_PAGE}")
     print(f"  Project root  : {PROJECT_ROOT}")
     print("  " + "-" * 64)
 
@@ -1442,7 +1461,7 @@ def startup_report() -> None:
     if segmentation_model.is_loaded:
         tag = "  [FALLBACK — not the fine-tuned AURA model]" if segmentation_model.using_fallback else ""
         print(f"  Model         : LOADED{tag}")
-        print(f"                  {os.path.relpath(segmentation_model.model_path, PROJECT_ROOT)}")
+        print(f"                  {display_path(segmentation_model.model_path)}")
         print(f"  Inference on  : {segmentation_model.device} ({segmentation_model.device_name})")
         print(f"  Task          : {segmentation_model.task}")
         classes = ", ".join(segmentation_model.names.values()) or "<none>"

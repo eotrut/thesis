@@ -1,0 +1,18 @@
+# =============================================================================
+# AURA desktop app — extra packages on top of backend/requirements.txt
+# =============================================================================
+#
+#   pip install -r desktop/requirements-desktop.txt
+#
+# pywebview draws the app window. On Windows it uses Microsoft Edge WebView2,
+# which ships with Windows 10 (21H2+) and 11, so nothing else needs installing
+# on the target laptop. It pulls in pythonnet (lets Python call the .NET
+# WebView2 control), clr_loader, cffi, pycparser, bottle and proxy_tools —
+# none of them touch torch/numpy/opencv, so the version notes in
+# backend/requirements.txt are unaffected.
+#
+# PINNED EXACTLY: desktop/aura_desktop.py wraps one internal pywebview method
+# (EdgeChrome.on_webview_ready) to auto-allow the camera. Upgrading pywebview
+# can move that; if it does, the app still works but Edge asks for camera
+# permission each launch. Re-test Camera View after any upgrade.
+pywebview==6.2.1

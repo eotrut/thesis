@@ -56,19 +56,19 @@ from collections import OrderedDict
 import cv2
 import numpy as np
 
+from app_paths import display_path, model_file
+
 logger = logging.getLogger("aura.smartselect")
 
 # --------------------------------------------------------------------------- #
 # Configuration
 # --------------------------------------------------------------------------- #
 
-BACKEND_DIR = os.path.dirname(os.path.abspath(__file__))
-PROJECT_ROOT = os.path.dirname(BACKEND_DIR)
-
-# Sits next to best.pt. Ultralytics will fetch it by bare name if the file is
-# absent, but only with a network — so the local copy is what makes the demo
+# Sits next to best.pt (app_paths picks the folder: website/model/ from source,
+# model/ next to AURA.exe when packaged). Ultralytics will fetch it by bare name
+# if the file is absent, but only with a network — so the local copy is what makes the demo
 # venue's connectivity irrelevant, same rule as the no-CDN decision.
-DEFAULT_SAM_PATH = os.path.join(PROJECT_ROOT, "website", "model", "mobile_sam.pt")
+DEFAULT_SAM_PATH = model_file("mobile_sam.pt")
 SAM_MODEL_PATH = os.environ.get("AURA_SAM_MODEL") or DEFAULT_SAM_PATH
 
 SAM_IMGSZ = int(os.environ.get("AURA_SAM_IMGSZ", "1024"))
@@ -190,7 +190,7 @@ class SamSelector:
                 self.error = "Smart select is disabled (AURA_SMART_SELECT=0)."
                 return False
             if not os.path.isfile(self.model_path):
-                rel = os.path.relpath(self.model_path, PROJECT_ROOT)
+                rel = display_path(self.model_path)
                 self.error = (
                     f"MobileSAM weights not found at '{rel}'. Download "
                     f"mobile_sam.pt (38 MB) once with an internet connection and "
@@ -305,7 +305,7 @@ class SamSelector:
             "loaded": self.is_loaded,
             "available": self.can_try,
             "model": os.path.basename(self.model_path),
-            "model_path": os.path.relpath(self.model_path, PROJECT_ROOT).replace("\\", "/"),
+            "model_path": display_path(self.model_path).replace("\\", "/"),
             "device": self.device,
             "imgsz": SAM_IMGSZ,
             "error": self.error,
