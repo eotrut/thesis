@@ -44,8 +44,9 @@ LICENSES AND SOURCE CODE
 AURA is built on open-source software. The "Licenses" tab in the app
 credits everything it bundles. LICENSES.txt (next to AURA.exe) lists every
 included package with its licence, and the licenses folder holds their full
-licence texts. AURA includes Ultralytics YOLOv8, which is licensed under the
-AGPL-3.0, so AURA's complete source code is available to you at
+licence texts. AURA includes Ultralytics YOLOv8 (AGPL-3.0), and AURA itself
+is free software under the GNU Affero General Public License v3.0
+(LICENSE.txt). Its complete source code is at
 https://github.com/eotrut/thesis (BUILD-INFO.txt names the exact version).
 
 IF SOMETHING GOES WRONG

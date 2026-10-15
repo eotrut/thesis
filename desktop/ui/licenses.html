@@ -142,6 +142,7 @@
         document.getElementById("lic-dataset").innerHTML =
           "<p><strong>" + esc(d.dataset.name) + "</strong>: " + esc(d.dataset.where) + "</p>" +
           "<p>" + esc(d.dataset.what) + "</p>" +
+          "<p>" + esc(d.dataset.images) + "</p>" +
           "<p>" + esc(d.dataset.shipped) + "</p>";
 
         document.getElementById("lic-photos").innerHTML = d.photos.map(function (p) {

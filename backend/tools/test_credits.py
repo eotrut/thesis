@@ -79,6 +79,8 @@ def check_required_present(verbose):
         failures.append("no fonts credited")
     if not credits.DATASET.get("where"):
         failures.append("training dataset not credited")
+    if "Unsplash" not in credits.DATASET.get("images", ""):
+        failures.append("training images' sources not credited")
     return failures
 
 
@@ -130,6 +132,18 @@ def check_agpl_and_source(verbose):
     except (OSError, subprocess.CalledProcessError):
         if verbose:
             print("         git not available, origin not compared")
+    licence = os.path.join(PROJECT_ROOT, "LICENSE")
+    if not os.path.isfile(licence):
+        failures.append("no LICENSE file at the repo root")
+    else:
+        head = open(licence, encoding="utf-8").read(400)
+        if "GNU AFFERO GENERAL PUBLIC LICENSE" not in head or "Version 3" not in head:
+            failures.append("repo LICENSE is not the AGPL-3.0 text")
+    readme = open(os.path.join(PROJECT_ROOT, "README.md"), encoding="utf-8").read()
+    if credits.AURA_COPYRIGHT.replace("Copyright (C) ", "") not in readme:
+        failures.append("README licence section does not carry the copyright line")
+    if "LICENSE.txt" not in open(os.path.join(DESKTOP_DIR, "build.py"), encoding="utf-8").read():
+        failures.append("build.py does not ship LICENSE.txt with the app")
     text = " ".join(credits.AGPL_SUMMARY)
     for needed in ("source code", "AGPL-3.0 text"):
         if needed not in text:

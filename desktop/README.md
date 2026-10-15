@@ -93,7 +93,7 @@ Each build also gets, next to `AURA.exe`:
 
 `desktop/write_licenses.py` produces both, and `build.py` runs it with the build venv's Python. "Actually shipped" comes from PyInstaller's own inventories of what it packed (`PYZ-00.toc` and `COLLECT-00.toc` in `build/work-<flavour>/aura/`), so build-only tools such as pip are left out.
 
-**AGPL-3.0, in short:** Ultralytics YOLOv8 is AGPL-3.0, so anyone who receives AURA must be able to get the complete source for that exact version. That source is the public repository, and `BUILD-INFO.txt` names the commit.
+**AGPL-3.0, in short:** Ultralytics YOLOv8 is AGPL-3.0, so AURA's own software is released under AGPL-3.0 as well (`LICENSE` at the repo root; each build ships it as `LICENSE.txt`). Anyone who receives AURA must be able to get the complete source for that exact version. That source is the public repository, and `BUILD-INFO.txt` names the commit.
 
 `python backend/tools/test_credits.py` checks that every bundled component, font and photo is credited. It also re-checks each stated licence against the installed package's metadata and runs the build writer against the last CPU build.
 

@@ -145,6 +145,8 @@ def main() -> int:
         print(f"  {f}")
 
     shutil.copy2(os.path.join(DESKTOP, "README-FIRST.txt"), os.path.join(out, "README-FIRST.txt"))
+    # AURA's own licence (AGPL-3.0); .txt so it opens on double-click.
+    shutil.copy2(os.path.join(ROOT, "LICENSE"), os.path.join(out, "LICENSE.txt"))
 
     # LICENSES.txt + licenses/: run in the build venv so the package metadata
     # it reads is exactly what PyInstaller bundled (see write_licenses.py).

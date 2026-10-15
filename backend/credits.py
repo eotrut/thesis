@@ -23,6 +23,8 @@ from color_templates import PHOTO_DIR, PHOTOS
 
 SOURCE_URL = "https://github.com/eotrut/thesis"
 
+AURA_COPYRIGHT = "Copyright (C) 2026 Kurt Robyn A. Manabat, Reymon G. David Jr. and Lester Usi"
+
 AGPL_URL = "https://www.gnu.org/licenses/agpl-3.0.html"
 
 # Main components, in the order the screen shows them. `match` is the text the
@@ -158,22 +160,27 @@ DATASET = {
     "where": "Roboflow project aura-thesis/wall-instance, version 4",
     "what": ("Wall photos annotated by the AURA team with instance-segmentation polygons "
              "for two classes, \"wall\" and \"non-paintable\"; used to fine-tune best.pt."),
+    "images": ("About 40% of the images were photographed by the AURA team with its own camera. "
+               "About 60% were collected online, mostly from Unsplash (Unsplash License: free to use "
+               "and modify, attribution not required). Thanks to the Unsplash photographers."),
     "shipped": "The dataset itself is not included in the app; only the trained model weights are.",
 }
 
 AGPL_SUMMARY = [
     "AURA includes Ultralytics YOLOv8, which is licensed under the GNU Affero General Public License v3.0 (AGPL-3.0). "
-    "When a program that includes AGPL-3.0 code is distributed, the AGPL-3.0 applies to the program as a whole.",
+    "When a program that includes AGPL-3.0 code is distributed, the AGPL-3.0 applies to the program as a whole, "
+    "so AURA's own software is released under the AGPL-3.0 too (" + AURA_COPYRIGHT + ").",
     "Anyone who receives AURA must be able to get its complete source code, including the build scripts, "
     "for the exact version they received, at no extra charge.",
     "Recipients get the same rights the AGPL-3.0 gives: to use, study, change and share AURA under the same licence.",
     "Copyright and licence notices must be kept, and the AGPL-3.0 text must be included "
-    "(it ships in licenses/ next to AURA.exe).",
+    "(it ships as LICENSE.txt next to AURA.exe).",
     "Ultralytics also sells an Enterprise License for closed-source use; AURA does not use it.",
 ]
 
 SOURCE_NOTE = [
-    f"AURA's complete source code is public at {SOURCE_URL}.",
+    f"AURA's complete source code is public at {SOURCE_URL}, under the AGPL-3.0 "
+    "(the LICENSE file in the repository).",
     "BUILD-INFO.txt next to AURA.exe records the exact git commit the build came from "
     "and the exact version of every package in it.",
     "To rebuild the app from source, follow desktop/README.md in the repository "
@@ -218,6 +225,9 @@ def render_text(packages: list[dict] | None = None) -> str:
     rule = "=" * 78
     out = [rule, "AURA desktop app: licences and credits", rule, "",
            "AURA is a thesis project (BS Computer Engineering, Holy Angel University).",
+           AURA_COPYRIGHT + ".",
+           "AURA is free software under the GNU Affero General Public License v3.0;",
+           "the full text is in LICENSE.txt next to AURA.exe.",
            f"Source code: {SOURCE_URL}", ""]
 
     out += ["ULTRALYTICS AND THE AGPL-3.0", "-" * 28]
@@ -245,7 +255,8 @@ def render_text(packages: list[dict] | None = None) -> str:
     out += [_wrap(FONTS_PACKAGING, ""), ""]
 
     out += ["TRAINING DATA", "-" * 13,
-            f"{DATASET['name']}: {DATASET['where']}", _wrap(DATASET["what"]), _wrap(DATASET["shipped"]), ""]
+            f"{DATASET['name']}: {DATASET['where']}", _wrap(DATASET["what"]), _wrap(DATASET["images"]),
+            _wrap(DATASET["shipped"]), ""]
 
     out += ["TEMPLATE PHOTOS (Color Recommendation > Browse Templates)", "-" * 57]
     for p in photo_credits():

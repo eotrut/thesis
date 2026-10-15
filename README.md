@@ -219,3 +219,25 @@ recommender samples the annotation colour instead of the room. Use a plain room 
 - The demo UI has **no CDN dependencies**; everything runs offline.
 - Gantry motion control is not yet wired to the API — the dashboard's painting-progress card
   is inert.
+
+---
+
+## License
+
+Copyright (C) 2026 Kurt Robyn A. Manabat, Reymon G. David Jr. and Lester Usi.
+
+The AURA software in this repository (`backend/`, `desktop/`, `website/` and the scripts) is
+free software under the **GNU Affero General Public License v3.0**. See [`LICENSE`](LICENSE).
+AURA builds on Ultralytics YOLOv8, which is itself AGPL-3.0, so distributing AURA requires
+this licence. In short: anyone may use, study, change and share AURA, and anyone who
+distributes it, changed or not, must make the complete source available under the same
+licence.
+
+Not covered by that licence:
+
+- **Research notes and thesis text** in `AURA Vault/`, which remain the authors' own.
+- **Third-party files**, which keep their own licences:
+  - template example photos: CC0, public domain, CC BY or CC BY-SA, credited per photo in `backend/color_templates.py`
+  - bundled fonts: SIL Open Font License 1.1, in `desktop/ui/assets/fonts/`
+  - the Python packages the desktop app bundles: listed with their licences in each build's `LICENSES.txt`
+
