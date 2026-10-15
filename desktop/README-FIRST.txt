@@ -39,6 +39,15 @@ Windows 10 (21H2 or newer) or Windows 11, 64-bit. Nothing else to install:
 Python is inside the app, and the window uses Microsoft Edge WebView2, which
 is part of Windows. About 8 GB RAM recommended.
 
+LICENSES AND SOURCE CODE
+------------------------
+AURA is built on open-source software. The "Licenses" tab in the app
+credits everything it bundles. LICENSES.txt (next to AURA.exe) lists every
+included package with its licence, and the licenses folder holds their full
+licence texts. AURA includes Ultralytics YOLOv8, which is licensed under the
+AGPL-3.0, so AURA's complete source code is available to you at
+https://github.com/eotrut/thesis (BUILD-INFO.txt names the exact version).
+
 IF SOMETHING GOES WRONG
 -----------------------
 Log file: %LOCALAPPDATA%\AURA\logs\aura-desktop.log

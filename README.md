@@ -6,8 +6,8 @@ Undergraduate thesis project · BS Computer Engineering · Holy Angel University
 
 AURA segments a wall with a fine-tuned YOLOv8 instance-segmentation model, recommends a
 coherent paint palette from the room's own colours, and (in later phases) drives a gantry
-to spray it. This repo holds the research vault, the trained-model backend, and the demo
-website.
+to spray it. This repo holds the research vault, the trained-model backend, the demo
+website, and the Windows desktop app built from it.
 
 ---
 
@@ -18,6 +18,7 @@ website.
 | `AURA Vault/` | Obsidian vault — research, design decisions, thesis chapters. The project's source of truth. |
 | `backend/` | Flask API serving the YOLOv8 model (segmentation, colour recommendation, webcam stream) |
 | `website/` | Demo site — dashboard, camera view, colour recommendation, results |
+| `desktop/` | Windows desktop app: the Dashboard, Color Recommendation and Camera View pages in an app window, packaged as `AURA.exe` — see [`desktop/README.md`](desktop/README.md) |
 | `website/model/` | Where the trained `best.pt` (and optional `mobile_sam.pt`) go — **weights are not in the repo**, see below |
 | `requirements.txt` | Exact `pip freeze` of the working environment |
 | `create_vault.py` | Utility that scaffolds the Obsidian vault |
@@ -110,6 +111,21 @@ Task          : segment
 Classes (2)   : non-paintable, wall
 ```
 
+### 5. Desktop app (Windows)
+
+The panel asked for installable software instead of a website, so the three working pages
+(Dashboard, Color Recommendation, Camera View) also run as a Windows app, with a Licenses
+screen added. The website above is unchanged.
+
+```powershell
+pip install -r desktop/requirements-desktop.txt
+python desktop/aura_desktop.py               # run from source in an app window
+py -3.11 desktop/build.py cpu --zip          # build AURA.exe (CPU); "gpu" for the CUDA build
+```
+
+Building, packaging, and what the app adds (colour templates, offline fonts, licences):
+**[`desktop/README.md`](desktop/README.md)**.
+
 ---
 
 ## API
@@ -137,9 +153,13 @@ These are standalone scripts, not a `pytest` suite — run them directly:
 ```bash
 python backend/tools/test_mask_correction.py   # brush/smart-select correction invariants
 python backend/tools/test_toolpath.py           # segmentation -> toolpath -> G-code pipeline
+python backend/tools/test_color_recommender.py  # palette maths and demographic bias
+python backend/tools/test_color_templates.py    # template palettes follow their cited findings
+python backend/tools/test_desktop_shell.py      # desktop app paths, pages, shutdown
+python backend/tools/test_credits.py            # licences and credits are complete and current
 ```
 
-Both load the model directly (no server needed) and use photos from `samples/`, falling back
+The first two load the model directly (no server needed) and use photos from `samples/`, falling back
 to the annotated `website/assets/test_result_*.jpg` exports (with a printed warning) only
 when `samples/` is empty. Those exports have masks already burnt in, so scores measured
 against them reflect the model against its own output, not fresh ground truth.
