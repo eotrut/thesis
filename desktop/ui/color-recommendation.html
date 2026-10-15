@@ -220,6 +220,69 @@
       color: var(--text-secondary);
       margin: 0;
     }
+
+    /* ------------------------------------------------------------------ */
+    /* Demographic templates (desktop app). Swatches sit on a neutral grey */
+    /* mat so the page around them does not shift how they look.          */
+    /* ------------------------------------------------------------------ */
+    body.is-templates #upload-section,
+    body.is-templates #compare-section,
+    body.is-templates #recommendation-section { display: none !important; }
+    body:not(.is-templates) #templates-section { display: none; }
+
+    .template-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0 22px; }
+    .template-tabs .btn { padding: 8px 14px; font-size: 0.85rem; }
+
+    .template-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 10px 14px; }
+    .template-head h2 { margin: 0; font-size: 1.5rem; }
+    .template-audience { color: var(--text-secondary); font-size: 0.9rem; }
+    .template-summary { margin: 8px 0 18px; color: var(--text-secondary); }
+
+    .template-mat {
+      background: #D6D6D3;            /* neutral grey, about N 8.5 — no tint */
+      border-radius: 14px;
+      padding: 18px;
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 14px;
+    }
+    .template-swatch { display: flex; flex-direction: column; gap: 6px; color: #1F1F1F; }
+    .template-swatch .chip {
+      height: 96px;
+      border-radius: 10px;
+      border: 1px solid rgba(0, 0, 0, 0.08);
+    }
+    .template-swatch .sw-name { font-weight: 700; font-size: 0.88rem; }
+    .template-swatch .sw-meta { font-size: 0.74rem; color: #4A4A4A; }
+    .template-swatch .sw-hex { font-family: ui-monospace, Consolas, monospace; }
+
+    .template-why { margin: 18px 0 0; padding: 0; list-style: none; display: grid; gap: 8px; }
+    .template-why li { font-size: 0.86rem; color: var(--text-secondary); }
+    .template-why .dot {
+      display: inline-block; width: 10px; height: 10px; border-radius: 50%;
+      margin-right: 8px; vertical-align: middle; border: 1px solid rgba(255, 255, 255, 0.35);
+    }
+    .template-why strong { color: var(--text); }
+    .template-why .src { opacity: 0.8; }
+
+    .template-photos { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-top: 24px; }
+    .template-photos figure { margin: 0; }
+    .template-photos img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: 10px; display: block; }
+    .template-photos figcaption { font-size: 0.8rem; color: var(--text-secondary); margin-top: 6px; line-height: 1.45; }
+    .template-photos .credit { display: block; font-size: 0.72rem; opacity: 0.85; }
+    .template-photos a { color: inherit; }
+
+    .template-caveats { margin: 20px 0 0; padding-left: 18px; font-size: 0.84rem; color: var(--text-secondary); }
+    .template-sources { margin-top: 18px; font-size: 0.82rem; color: var(--text-secondary); }
+    .template-sources summary { cursor: pointer; color: var(--text); }
+    .template-sources li { margin: 6px 0; }
+    .template-sources a { color: inherit; }
+    .template-disclaimer { margin-top: 18px; font-size: 0.8rem; color: var(--text-secondary); }
+
+    @media (max-width: 900px) {
+      .template-mat { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .template-photos { grid-template-columns: 1fr; }
+    }
   </style>
 </head>
 <body data-page="color-recommendation">
@@ -231,7 +294,12 @@
       <div class="page-header">
         <p class="eyebrow">Color Recommendation Module</p>
         <h1>Color Recommendation</h1>
-        <p>Upload a reference photo of the wall. AURA detects the paintable region and proposes a coherent color palette.</p>
+        <p>Scan a photo of the wall and AURA proposes a palette from the room itself, or browse research-supported templates for who the room is for.</p>
+      </div>
+
+      <div class="mode-tabs">
+        <button class="btn btn-secondary is-active" id="mode-scan" type="button">Scan a Room</button>
+        <button class="btn btn-secondary" id="mode-templates" type="button">Browse Templates</button>
       </div>
 
       <section class="section" style="padding-top: 0;" id="upload-section">
@@ -289,6 +357,17 @@
             <span class="pulse-dot" id="status-dot"></span>
             <span id="status-text">Running YOLOv8 segmentation…</span>
           </div>
+        </div>
+      </section>
+
+      <!-- Demographic templates: a second way in, alongside the scan above.
+           Data and photo credits come from GET /api/color-templates
+           (backend/color_templates.py). -->
+      <section class="section" style="padding-top: 0;" id="templates-section">
+        <div class="card">
+          <span class="tuning-label">Who is the room for?</span>
+          <div class="template-tabs" id="template-tabs" role="tablist" aria-label="Occupant group"></div>
+          <div id="template-body"><p class="tuning-hint">Loading templates…</p></div>
         </div>
       </section>
 
@@ -1239,6 +1318,126 @@
       });
 
       setCustomFromHex("#6B7FD4");
+    })();
+  </script>
+  <script>
+    /* Demographic templates view. Separate from the scan-flow script above;
+       the only link between them is the category select, which "Scan my room
+       for this group" sets before switching back. */
+    (function () {
+      var body = document.body;
+      var modeScan = document.getElementById("mode-scan");
+      var modeTemplates = document.getElementById("mode-templates");
+      var tabs = document.getElementById("template-tabs");
+      var target = document.getElementById("template-body");
+      var categorySelect = document.getElementById("category-select");
+      var data = null;
+      var current = null;
+
+      function esc(value) {
+        return String(value == null ? "" : value)
+          .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;");
+      }
+
+      function setMode(templates) {
+        body.classList.toggle("is-templates", templates);
+        modeScan.classList.toggle("is-active", !templates);
+        modeTemplates.classList.toggle("is-active", templates);
+        if (templates && !data) load();
+      }
+
+      function load() {
+        window.AURA.apiFetch("/api/color-templates", { timeoutMs: 10000 })
+          .then(function (res) {
+            if (!res.success) throw new Error(res.error || "No templates returned.");
+            data = res;
+            renderTabs();
+            show(categorySelect && categorySelect.value !== "none" ? categorySelect.value : res.templates[0].category);
+          })
+          .catch(function (err) {
+            target.innerHTML = '<p class="tuning-hint">Could not load templates: ' + esc(err.message) + "</p>";
+          });
+      }
+
+      function renderTabs() {
+        tabs.innerHTML = data.templates.map(function (t) {
+          return '<button class="btn btn-secondary" type="button" role="tab" data-cat="' +
+            esc(t.category) + '">' + esc(t.audience.split(" — ")[0] === "General" ? "General" : t.audience) + "</button>";
+        }).join("");
+        Array.prototype.forEach.call(tabs.querySelectorAll("button"), function (b) {
+          b.addEventListener("click", function () { show(b.getAttribute("data-cat")); });
+        });
+      }
+
+      function show(category) {
+        var t = data.templates.filter(function (x) { return x.category === category; })[0] || data.templates[0];
+        current = t;
+        Array.prototype.forEach.call(tabs.querySelectorAll("button"), function (b) {
+          var on = b.getAttribute("data-cat") === t.category;
+          b.classList.toggle("is-active", on);
+          b.setAttribute("aria-selected", on ? "true" : "false");
+        });
+
+        var swatches = t.swatches.map(function (s) {
+          return '<div class="template-swatch">' +
+            '<div class="chip" style="background:' + esc(s.hex) + '"></div>' +
+            '<span class="sw-name">' + esc(s.name) + "</span>" +
+            '<span class="sw-meta"><span class="sw-hex">' + esc(s.hex) + "</span> · " + esc(s.role) + "</span>" +
+            "</div>";
+        }).join("");
+
+        var why = t.swatches.map(function (s) {
+          return '<li><span class="dot" style="background:' + esc(s.hex) + '"></span><strong>' +
+            esc(s.name) + ":</strong> " + esc(s.why) + ' <span class="src">(' + esc(s.sources.join("; ")) + ")</span></li>";
+        }).join("");
+
+        var photos = t.photos.map(function (p) {
+          var licence = p.license_url
+            ? '<a href="' + esc(p.license_url) + '" target="_blank" rel="noopener">' + esc(p.license) + "</a>"
+            : esc(p.license);
+          return '<figure><img src="' + esc(p.src) + '" alt="' + esc(p.caption) + '" loading="lazy" />' +
+            "<figcaption>Example: " + esc(p.caption) +
+            '<span class="credit">' + esc(p.credit.split(" — ")[0]) + " · " + licence + " · " +
+            '<a href="' + esc(p.source) + '" target="_blank" rel="noopener">source</a></span></figcaption></figure>';
+        }).join("");
+
+        var caveats = t.caveats.length
+          ? '<ul class="template-caveats">' + t.caveats.map(function (c) { return "<li>" + esc(c) + "</li>"; }).join("") + "</ul>"
+          : "";
+
+        var sources = t.sources.map(function (s) {
+          return "<li>" + esc(s.apa) + ' <a href="https://doi.org/' + esc(s.doi) + '" target="_blank" rel="noopener">https://doi.org/' +
+            esc(s.doi) + "</a><br><em>" + esc(s.finding) + "</em></li>";
+        }).join("");
+
+        target.innerHTML =
+          '<div class="template-head"><h2>' + esc(t.name) + "</h2>" +
+          '<span class="template-audience">' + esc(t.audience) + "</span>" +
+          '<span class="badge badge-info">' + esc(t.label) + "</span></div>" +
+          '<p class="template-summary">' + esc(t.summary) + "</p>" +
+          '<div class="template-mat">' + swatches + "</div>" +
+          '<ul class="template-why">' + why + "</ul>" +
+          '<div class="template-photos">' + photos + "</div>" +
+          caveats +
+          '<details class="template-sources"><summary>Sources (' + t.sources.length + ")</summary><ol>" + sources + "</ol></details>" +
+          '<p class="template-disclaimer">' + esc(data.disclaimer) +
+          " Example photos show a colour family; they are not AURA output.</p>" +
+          '<div class="btn-row" style="margin-top: 18px;"><button class="btn btn-primary" type="button" id="template-scan">' +
+          "Scan my room for this group</button></div>";
+
+        document.getElementById("template-scan").addEventListener("click", function () {
+          if (categorySelect) {
+            categorySelect.value = current.category;
+            categorySelect.dispatchEvent(new Event("change"));
+          }
+          setMode(false);
+          window.scrollTo({ top: 0, behavior: "smooth" });
+        });
+      }
+
+      modeScan.addEventListener("click", function () { setMode(false); });
+      modeTemplates.addEventListener("click", function () { setMode(true); });
     })();
   </script>
 </body>

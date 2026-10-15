@@ -18,6 +18,7 @@ Endpoints
 ---------
 POST /api/segment   multipart image -> base64 original + masked overlay + detections
 POST /api/toolpath  multipart image -> mm-space serpentine paint path + G-code
+GET  /api/color-templates  demographic palettes (desktop app templates view)
 GET  /api/stream    MJPEG webcam stream, ?overlay=pre|during|post
 GET  /api/status    model / camera / CUDA status for the dashboard
 
@@ -55,6 +56,7 @@ from color_recommender import (  # noqa: E402
     NEUTRAL_COLORS,
     recommend_colors,
 )
+from color_templates import templates_payload  # noqa: E402
 from coordinate_mapping import (  # noqa: E402
     WALL_HEIGHT_MM,
     WALL_WIDTH_MM,
@@ -1085,6 +1087,20 @@ def api_recommend_colors():
 
 
 # --------------------------------------------------------------------------- #
+# API — GET /api/color-templates
+#
+# The demographic palettes for the desktop app's "Browse templates" view: a
+# second way into colour recommendation that needs no photo and no model. Pure
+# data (see color_templates.py), so it answers even when the weights are
+# missing. The example photos it references live in desktop/ui/assets.
+# --------------------------------------------------------------------------- #
+
+@app.route("/api/color-templates", methods=["GET"])
+def api_color_templates():
+    return jsonify({"success": True, **templates_payload()})
+
+
+# --------------------------------------------------------------------------- #
 # API — POST /api/toolpath
 #
 # The stage between segmentation and the (not yet written) serial link: segment
@@ -1489,7 +1505,7 @@ def startup_report() -> None:
     print("  " + "-" * 64)
     print("  Endpoints     : POST /api/segment   GET /api/stream?overlay=pre|during|post")
     print("                  GET  /api/status    GET /api/capture")
-    print("                  POST /api/recommend-colors")
+    print("                  POST /api/recommend-colors  GET /api/color-templates")
     print("                  POST /api/toolpath   POST /api/smart-select")
     print("  Mask editing  : optional 'mask_correction' field on the POST endpoints")
     print(f"  CORS          : enabled for all origins (file:// pages included)")

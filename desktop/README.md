@@ -71,6 +71,18 @@ To test the build the way it will run elsewhere: copy `AURA-CPU` to a folder out
 - **Hook**: a small recipe PyInstaller uses for a specific library, telling it which hidden files (DLLs, data) that library needs at runtime.
 - **CUDA**: NVIDIA's system for running computations on the graphics card. "CPU build" means torch without CUDA; "CUDA build" means torch with NVIDIA's GPU libraries included.
 
+## Colour templates (Color Recommendation → Browse Templates)
+
+This is a second way into colour recommendation, alongside the camera scan, which is unchanged. There is one template per "who is this room for?" category, the same seven categories as `CATEGORY_BIAS`. Each template has:
+
+- **Five colours.** Each colour is defined in CIE LCh, cites the specific finding behind it and stays inside the recommender's paint band.
+- **Two example photos.** They are openly licensed (CC0, public domain, CC BY or CC BY-SA), come from Wikimedia Commons and are credited. They are bundled in `ui/assets/templates/`, so they work offline.
+- **Caveats and full APA sources.**
+
+Every template is labelled **"Research-supported tendency"**, never "popular": the studies measured preference, not popularity. The direction of each colour comes from the papers; the exact shades are ours. Data lives in `backend/color_templates.py` and is served by `GET /api/color-templates`. **Scan my room for this group** switches to the scan flow with that category preselected.
+
+`python backend/tools/test_color_templates.py` checks that each palette still follows its cited direction. Examples: the boys' palette is more saturated than the girls', the teen palette has no green, and the elderly palette has a cool bedroom option. It also checks the paint band, citations, photo licences and the wording.
+
 ## Camera
 
 Camera View offers two sources:
