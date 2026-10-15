@@ -71,7 +71,11 @@ def gb(n: int) -> str:
 def git_describe() -> str:
     try:
         commit = output(["git", "-C", ROOT, "rev-parse", "--short", "HEAD"])
-        dirty = output(["git", "-C", ROOT, "status", "--porcelain", "--", "backend", "desktop"])
+        # Untracked files under backend/tools (tests, their logs) never go into
+        # the app, so they don't make the build differ from the commit.
+        dirty = [line for line in output(["git", "-C", ROOT, "status", "--porcelain", "--",
+                                          "backend", "desktop"]).splitlines()
+                 if not (line.startswith("??") and line[3:].startswith("backend/tools/"))]
         return commit + (" + uncommitted changes in backend/ or desktop/" if dirty else "")
     except Exception:
         return "unknown"
