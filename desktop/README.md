@@ -71,6 +71,17 @@ To test the build the way it will run elsewhere: copy `AURA-CPU` to a folder out
 - **Hook**: a small recipe PyInstaller uses for a specific library, telling it which hidden files (DLLs, data) that library needs at runtime.
 - **CUDA**: NVIDIA's system for running computations on the graphics card. "CPU build" means torch without CUDA; "CUDA build" means torch with NVIDIA's GPU libraries included.
 
+## Look and fonts
+
+The app uses a warm, light "design-studio" theme: a near-neutral warm off-white background, white rounded cards and a terracotta accent. The background is kept close to neutral, and paint swatches and photos sit on white or neutral-grey patches, so the surroundings don't change how a paint colour looks. The theme colours are variables at the top of `ui/style.css`. The mask and toolpath colours drawn over camera images (green, amber, red) are unchanged.
+
+Fonts are bundled in `ui/assets/fonts/` and loaded locally, so the app needs no internet connection:
+
+- **Fraunces** (headings), by the Fraunces Project Authors (Undercase Type), SIL Open Font License 1.1, https://github.com/undercasetype/Fraunces
+- **DM Sans** (body text), by the DM Sans Project Authors (Colophon Foundry, for Google), SIL Open Font License 1.1, https://github.com/googlefonts/dm-fonts
+
+The `.woff2` files are the Latin and Latin Extended subsets from the Fontsource 5.3.0 variable packages (`@fontsource-variable/fraunces`, `@fontsource-variable/dm-sans` on npm), which repackage the Google Fonts builds. The licence texts ship beside them (`OFL-Fraunces.txt`, `OFL-DMSans.txt`).
+
 ## Colour templates (Color Recommendation → Browse Templates)
 
 This is a second way into colour recommendation, alongside the camera scan, which is unchanged. There is one template per "who is this room for?" category, the same seven categories as `CATEGORY_BIAS`. Each template has:

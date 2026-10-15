@@ -1805,7 +1805,7 @@
         var sy = canvas.height / wall.h;
 
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.fillStyle = "#081120";
+        ctx.fillStyle = "#2B2A28";
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
         /* The uncalibrated transform just stretches the whole frame onto the
@@ -1826,7 +1826,7 @@
             // Light wash only — enough to keep the green legible over a bright
             // wall, not so much that the frame stops being recognisable. The
             // point of the view is seeing the path against the actual room.
-            ctx.fillStyle = "rgba(10, 22, 40, 0.15)";
+            ctx.fillStyle = "rgba(0, 0, 0, 0.18)";
             ctx.fillRect(0, 0, canvas.width, canvas.height);
           }
         }
@@ -1986,11 +1986,11 @@
           ctx.arc(x, y, 11, 0, Math.PI * 2);
           ctx.fillStyle = "#38BDF8";
           ctx.fill();
-          ctx.strokeStyle = "#081120";
+          ctx.strokeStyle = "#2B2A28";
           ctx.lineWidth = 2;
           ctx.stroke();
 
-          ctx.fillStyle = "#081120";
+          ctx.fillStyle = "#2B2A28";
           ctx.font = "bold 15px sans-serif";
           ctx.textAlign = "center";
           ctx.textBaseline = "middle";

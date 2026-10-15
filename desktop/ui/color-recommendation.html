@@ -11,7 +11,7 @@
     .neutral-section {
       margin-top: 24px;
       padding-top: 20px;
-      border-top: 1px solid rgba(148, 163, 184, 0.22);
+      border-top: 1px solid rgba(120, 104, 88, 0.22);
     }
 
     .neutral-prompt {
@@ -24,7 +24,7 @@
     /* The stock swatch has no border, so #FFFFFF vanishes against a light card
        and #1C1C1C against a dark one. Ring every neutral swatch instead. */
     #neutral-row .swatch {
-      border: 1px solid rgba(148, 163, 184, 0.45);
+      border: 1px solid rgba(120, 104, 88, 0.45);
     }
 
     /* ---------------- Optional tuning inputs ----------------
@@ -36,7 +36,7 @@
     .tuning-section {
       margin-top: 22px;
       padding-top: 18px;
-      border-top: 1px solid rgba(148, 163, 184, 0.22);
+      border-top: 1px solid rgba(120, 104, 88, 0.22);
       display: flex;
       gap: 26px;
       flex-wrap: wrap;
@@ -90,7 +90,7 @@
     .tuning-select:focus {
       outline: none;
       border-color: var(--accent);
-      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.25);
+      box-shadow: 0 0 0 3px rgba(164, 88, 58, 0.25);
     }
 
     /* A plain text button — "Remove" is a correction, not an action worth
@@ -112,7 +112,7 @@
     .custom-section {
       margin-top: 26px;
       padding-top: 20px;
-      border-top: 1px solid rgba(148, 163, 184, 0.22);
+      border-top: 1px solid rgba(120, 104, 88, 0.22);
     }
 
     .custom-prompt {
@@ -144,7 +144,7 @@
       border-radius: 50%;
       cursor: crosshair;
       background: var(--panel);
-      box-shadow: 0 0 0 1px var(--panel-border), 0 6px 18px rgba(0, 0, 0, 0.35);
+      box-shadow: 0 0 0 1px var(--panel-border), 0 6px 18px rgba(60, 45, 30, 0.15);
       touch-action: none; /* let us handle drags without the page scrolling */
     }
 
@@ -177,12 +177,12 @@
       border-radius: 50%;
       background: none;
       cursor: pointer;
-      box-shadow: 0 0 0 2px var(--panel-border), 0 4px 12px rgba(0, 0, 0, 0.35);
+      box-shadow: 0 0 0 2px var(--panel-border), 0 4px 12px rgba(60, 45, 30, 0.15);
       transition: box-shadow 0.15s ease;
     }
 
     #custom-color-input:hover {
-      box-shadow: 0 0 0 2px var(--accent), 0 4px 14px rgba(37, 99, 235, 0.45);
+      box-shadow: 0 0 0 2px var(--accent), 0 4px 14px rgba(164, 88, 58, 0.45);
     }
 
     #custom-color-input::-webkit-color-swatch-wrapper { padding: 0; }
@@ -205,11 +205,11 @@
     .custom-hex:focus {
       outline: none;
       border-color: var(--accent);
-      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.25);
+      box-shadow: 0 0 0 3px rgba(164, 88, 58, 0.25);
     }
 
     .custom-hex.is-invalid {
-      border-color: #EF4444;
+      border-color: #B91C1C;
       box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.22);
     }
 
@@ -260,7 +260,7 @@
     .template-why li { font-size: 0.86rem; color: var(--text-secondary); }
     .template-why .dot {
       display: inline-block; width: 10px; height: 10px; border-radius: 50%;
-      margin-right: 8px; vertical-align: middle; border: 1px solid rgba(255, 255, 255, 0.35);
+      margin-right: 8px; vertical-align: middle; border: 1px solid rgba(0, 0, 0, 0.12);
     }
     .template-why strong { color: var(--text); }
     .template-why .src { opacity: 0.8; }
@@ -1216,7 +1216,7 @@
         wheelCtx.beginPath();
         wheelCtx.arc(mx, my, 7, 0, Math.PI * 2);
         // Flip the ring against the backdrop so it stays visible at both ends.
-        wheelCtx.strokeStyle = custom.v > 0.55 ? "#0A1628" : "#FFFFFF";
+        wheelCtx.strokeStyle = custom.v > 0.55 ? "#2A2522" : "#FFFFFF";
         wheelCtx.lineWidth = 2;
         wheelCtx.stroke();
       }

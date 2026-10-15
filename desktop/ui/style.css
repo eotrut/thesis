@@ -3,25 +3,31 @@
    AI-Based Autonomous Wall Painting Robot
    ========================================================================== */
 
-@import url('https://fonts.googleapis.com/css2?family=Michroma&display=swap');
+/* Fonts ship inside the app (assets/fonts) so nothing loads from the internet. */
+@import url('assets/fonts/fonts.css');
 
+/* Warm design-studio theme. The page background is a near-neutral warm
+   off-white rather than a strong tint, and cards and image panels are
+   neutral, so the surroundings don't skew how paint colours look. */
 :root {
-  --bg: #0A1628;
-  --panel: #0F1E3A;
-  --panel-border: rgba(37, 99, 235, 0.35);
-  --accent: #2563EB;
-  --accent-hover: #3B82F6;
-  --text: #FFFFFF;
-  --text-secondary: #94A3B8;
-  --amber: #F59E0B;
-  --amber-bg: rgba(245, 158, 11, 0.12);
-  --amber-border: rgba(245, 158, 11, 0.45);
-  --green: #22C55E;
-  --yellow: #EAB308;
-  --radius: 10px;
+  --bg: #F6F4F0;
+  --panel: #FFFFFF;
+  --panel-border: #E6E0D7;
+  --viewer: #E3E2DF;            /* neutral mat behind camera frames and photos */
+  --accent: #A4583A;            /* terracotta clay */
+  --accent-hover: #8A4730;      /* darker; also used for accent text on light */
+  --text: #2A2522;
+  --text-secondary: #6F665D;
+  --amber: #B45309;
+  --amber-bg: rgba(180, 83, 9, 0.08);
+  --amber-border: rgba(180, 83, 9, 0.35);
+  --green: #15803D;
+  --yellow: #CA8A04;
+  --radius: 16px;
+  --shadow: 0 1px 2px rgba(60, 45, 30, 0.05), 0 6px 20px rgba(60, 45, 30, 0.06);
   --max-width: 1180px;
-  --font-body: 'Michroma', sans-serif;
-  --font-heading: 'Michroma', sans-serif;
+  --font-body: 'DM Sans', 'Segoe UI', system-ui, sans-serif;
+  --font-heading: 'Fraunces', Georgia, 'Times New Roman', serif;
 }
 
 * {
@@ -44,6 +50,8 @@ body {
 
 h1, h2, h3, h4, h5, h6 {
   font-family: var(--font-heading);
+  font-weight: 600;
+  letter-spacing: -0.01em;
 }
 
 a {
@@ -70,9 +78,9 @@ img {
   position: sticky;
   top: 0;
   z-index: 100;
-  background: rgba(10, 22, 40, 0.92);
+  background: rgba(246, 244, 240, 0.9);
   backdrop-filter: blur(8px);
-  border-bottom: 1px solid rgba(148, 163, 184, 0.15);
+  border-bottom: 1px solid var(--panel-border);
 }
 
 .navbar-inner {
@@ -86,9 +94,10 @@ img {
 }
 
 .navbar-logo {
-  font-weight: 800;
-  font-size: 1.25rem;
-  letter-spacing: 0.06em;
+  font-family: var(--font-heading);
+  font-weight: 700;
+  font-size: 1.4rem;
+  letter-spacing: 0.04em;
   color: var(--text);
   display: flex;
   align-items: center;
@@ -113,8 +122,9 @@ img {
 
 .navbar-links a {
   display: inline-block;
-  padding: 8px 14px;
-  border-radius: 6px;
+  padding: 8px 16px;
+  border-radius: 999px;
+  border: 1px solid transparent;
   font-size: 0.92rem;
   color: var(--text-secondary);
   font-weight: 500;
@@ -123,19 +133,19 @@ img {
 
 .navbar-links a:hover {
   color: var(--text);
-  background: rgba(148, 163, 184, 0.08);
+  background: rgba(120, 104, 88, 0.08);
 }
 
 .navbar-links a.active {
-  color: var(--text);
-  background: rgba(37, 99, 235, 0.18);
-  border: 1px solid var(--panel-border);
+  color: var(--accent-hover);
+  background: rgba(164, 88, 58, 0.10);
+  border-color: rgba(164, 88, 58, 0.25);
 }
 
 .navbar-toggle {
   display: none;
   background: none;
-  border: 1px solid rgba(148, 163, 184, 0.3);
+  border: 1px solid rgba(120, 104, 88, 0.3);
   border-radius: 6px;
   color: var(--text);
   padding: 6px 10px;
@@ -157,7 +167,7 @@ main {
 
 .page-header h1 {
   margin: 0 0 8px;
-  font-size: 2rem;
+  font-size: 2.2rem;
 }
 
 .page-header p {
@@ -193,6 +203,7 @@ main {
   border: 1px solid var(--panel-border);
   border-radius: var(--radius);
   padding: 24px;
+  box-shadow: var(--shadow);
 }
 
 .card h3 {
@@ -226,7 +237,7 @@ main {
   justify-content: center;
   gap: 8px;
   padding: 12px 22px;
-  border-radius: 8px;
+  border-radius: 12px;
   border: 1px solid transparent;
   font-size: 0.95rem;
   font-weight: 600;
@@ -251,7 +262,7 @@ main {
 .btn-secondary {
   background: transparent;
   color: var(--text);
-  border-color: rgba(148, 163, 184, 0.35);
+  border-color: rgba(120, 104, 88, 0.35);
 }
 
 .btn-secondary:hover {
@@ -261,7 +272,7 @@ main {
 
 .btn-secondary.is-active,
 .btn-toggle.is-active {
-  background: rgba(37, 99, 235, 0.18);
+  background: rgba(164, 88, 58, 0.18);
   border-color: var(--accent);
   color: var(--text);
 }
@@ -283,7 +294,7 @@ main {
 .hero {
   padding: 88px 0 64px;
   text-align: center;
-  border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+  border-bottom: 1px solid rgba(120, 104, 88, 0.12);
 }
 
 .hero h1 {
@@ -291,7 +302,7 @@ main {
   font-weight: 800;
   letter-spacing: 0.02em;
   margin: 0 0 12px;
-  background: linear-gradient(180deg, #fff 0%, #cbd5f5 100%);
+  background: linear-gradient(180deg, var(--text) 0%, #5A4A3E 100%);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -332,7 +343,7 @@ main {
   width: 44px;
   height: 44px;
   border-radius: 8px;
-  background: rgba(37, 99, 235, 0.15);
+  background: rgba(164, 88, 58, 0.15);
   border: 1px solid var(--panel-border);
   display: flex;
   align-items: center;
@@ -365,7 +376,7 @@ main {
   height: 64px;
   margin: 0 auto 14px;
   border-radius: 50%;
-  background: linear-gradient(135deg, var(--accent), #1E3A8A);
+  background: linear-gradient(135deg, var(--accent), #6B3A26);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -408,9 +419,9 @@ main {
 }
 
 .badge-idle {
-  background: rgba(148, 163, 184, 0.15);
+  background: rgba(120, 104, 88, 0.15);
   color: var(--text-secondary);
-  border: 1px solid rgba(148, 163, 184, 0.3);
+  border: 1px solid rgba(120, 104, 88, 0.3);
 }
 
 .badge-connected {
@@ -420,27 +431,27 @@ main {
 }
 
 .badge-running {
-  background: rgba(37, 99, 235, 0.15);
+  background: rgba(164, 88, 58, 0.15);
   color: var(--accent-hover);
   border: 1px solid var(--panel-border);
 }
 
 .badge-error {
   background: rgba(239, 68, 68, 0.15);
-  color: #EF4444;
+  color: #B91C1C;
   border: 1px solid rgba(239, 68, 68, 0.35);
 }
 
 .badge-info {
-  background: rgba(37, 99, 235, 0.15);
+  background: rgba(164, 88, 58, 0.15);
   color: var(--accent-hover);
   border: 1px solid var(--panel-border);
 }
 
 .badge-placeholder {
-  background: rgba(148, 163, 184, 0.12);
+  background: rgba(120, 104, 88, 0.12);
   color: var(--text-secondary);
-  border: 1px dashed rgba(148, 163, 184, 0.4);
+  border: 1px dashed rgba(120, 104, 88, 0.4);
 }
 
 /* ---------------------------------------------------------------------- */
@@ -471,7 +482,7 @@ main {
   width: 100%;
   height: 10px;
   border-radius: 999px;
-  background: rgba(148, 163, 184, 0.15);
+  background: rgba(120, 104, 88, 0.15);
   overflow: hidden;
   margin-top: 4px;
 }
@@ -499,7 +510,7 @@ main {
   display: flex;
   gap: 14px;
   padding: 10px 4px;
-  border-bottom: 1px solid rgba(148, 163, 184, 0.1);
+  border-bottom: 1px solid rgba(120, 104, 88, 0.1);
   font-size: 0.88rem;
 }
 
@@ -522,7 +533,7 @@ main {
 /* ---------------------------------------------------------------------- */
 
 .drop-zone {
-  border: 2px dashed rgba(148, 163, 184, 0.35);
+  border: 2px dashed rgba(120, 104, 88, 0.35);
   border-radius: var(--radius);
   padding: 56px 24px;
   text-align: center;
@@ -534,7 +545,7 @@ main {
 .drop-zone:hover,
 .drop-zone.is-dragover {
   border-color: var(--accent);
-  background: rgba(37, 99, 235, 0.06);
+  background: rgba(164, 88, 58, 0.06);
 }
 
 .drop-zone .drop-icon {
@@ -556,7 +567,7 @@ main {
   border-radius: var(--radius);
   overflow: hidden;
   border: 1px solid var(--panel-border);
-  background: #081120;
+  background: var(--viewer);
   aspect-ratio: 4 / 3;
 }
 
@@ -598,7 +609,7 @@ main {
   width: 88px;
   height: 88px;
   border-radius: 12px;
-  border: 1px solid rgba(148, 163, 184, 0.25);
+  border: 1px solid rgba(120, 104, 88, 0.25);
   flex-shrink: 0;
 }
 
@@ -673,7 +684,7 @@ main {
   position: relative;
   border-radius: var(--radius);
   border: 1px solid var(--panel-border);
-  background: #081120;
+  background: var(--viewer);
   aspect-ratio: 16 / 9;
   display: flex;
   align-items: center;
@@ -704,14 +715,14 @@ main {
   height: 12px;
   border-radius: 50%;
   background: var(--accent);
-  box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.6);
+  box-shadow: 0 0 0 0 rgba(164, 88, 58, 0.6);
   animation: pulse 1.6s infinite;
 }
 
 @keyframes pulse {
-  0% { box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.55); }
-  70% { box-shadow: 0 0 0 14px rgba(37, 99, 235, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(37, 99, 235, 0); }
+  0% { box-shadow: 0 0 0 0 rgba(164, 88, 58, 0.55); }
+  70% { box-shadow: 0 0 0 14px rgba(164, 88, 58, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(164, 88, 58, 0); }
 }
 
 .overlay-mask {
@@ -772,7 +783,7 @@ main {
   border: 1px solid var(--amber-border);
   border-radius: var(--radius);
   padding: 16px 20px;
-  color: #FCD34D;
+  color: #92400E;
   font-size: 0.92rem;
   font-weight: 600;
   display: flex;
@@ -814,18 +825,18 @@ main {
 .gallery-card img {
   width: 100%;
   border-radius: 6px;
-  border: 1px solid rgba(148, 163, 184, 0.2);
+  border: 1px solid rgba(120, 104, 88, 0.2);
   aspect-ratio: 4 / 3;
   object-fit: cover;
-  background: #081120;
+  background: var(--viewer);
 }
 
 .gallery-placeholder-box {
   width: 100%;
   aspect-ratio: 4 / 3;
   border-radius: 6px;
-  background: rgba(148, 163, 184, 0.08);
-  border: 1px dashed rgba(148, 163, 184, 0.3);
+  background: rgba(120, 104, 88, 0.08);
+  border: 1px dashed rgba(120, 104, 88, 0.3);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -925,7 +936,7 @@ main {
 .standards-table td {
   text-align: left;
   padding: 12px 14px;
-  border-bottom: 1px solid rgba(148, 163, 184, 0.15);
+  border-bottom: 1px solid rgba(120, 104, 88, 0.15);
   vertical-align: top;
 }
 
@@ -972,7 +983,7 @@ main {
   padding: 12px 20px;
   border-radius: 8px;
   font-size: 0.88rem;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 8px 24px rgba(60, 45, 30, 0.18);
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.2s ease, transform 0.2s ease;
@@ -989,7 +1000,7 @@ main {
 /* ---------------------------------------------------------------------- */
 
 .site-footer {
-  border-top: 1px solid rgba(148, 163, 184, 0.12);
+  border-top: 1px solid rgba(120, 104, 88, 0.12);
   padding: 28px 0;
   text-align: center;
   color: var(--text-secondary);
@@ -1007,7 +1018,7 @@ main {
   margin-top: 18px;
   padding: 10px 14px;
   border-radius: 8px;
-  background: rgba(37, 99, 235, 0.1);
+  background: rgba(164, 88, 58, 0.1);
   border: 1px solid var(--panel-border);
   font-size: 0.88rem;
   color: var(--text-secondary);
@@ -1016,7 +1027,7 @@ main {
 .inference-status.is-error {
   background: rgba(239, 68, 68, 0.1);
   border-color: rgba(239, 68, 68, 0.35);
-  color: #FCA5A5;
+  color: #B91C1C;
 }
 
 .detection-summary {
@@ -1066,7 +1077,7 @@ main {
   display: block;
   height: 8px;
   border-radius: 999px;
-  background: rgba(148, 163, 184, 0.15);
+  background: rgba(120, 104, 88, 0.15);
   overflow: hidden;
 }
 
@@ -1097,7 +1108,7 @@ main {
 .toolpath-panel {
   border-radius: var(--radius);
   border: 1px solid var(--panel-border);
-  background: #081120;
+  background: var(--viewer);
   padding: 10px;
   display: flex;
   justify-content: center;
@@ -1116,8 +1127,8 @@ main {
   overflow: auto;
   margin: 12px 0 0;
   padding: 14px 16px;
-  background: #081120;
-  border: 1px solid rgba(148, 163, 184, 0.18);
+  background: var(--viewer);
+  border: 1px solid rgba(120, 104, 88, 0.18);
   border-radius: var(--radius);
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 0.78rem;
@@ -1149,7 +1160,7 @@ main {
   border-radius: var(--radius);
   background: var(--amber-bg);
   border: 1px solid var(--amber-border);
-  color: #FCD34D;
+  color: #92400E;
   font-size: 0.92rem;
   font-weight: 600;
 }
@@ -1157,7 +1168,7 @@ main {
 .calibration-block {
   margin-top: 20px;
   padding-top: 18px;
-  border-top: 1px solid rgba(148, 163, 184, 0.15);
+  border-top: 1px solid rgba(120, 104, 88, 0.15);
 }
 
 .calibration-block h4 {
@@ -1183,7 +1194,7 @@ main {
   padding: 8px 10px;
   border-radius: 6px;
   border: 1px solid var(--panel-border);
-  background: #081120;
+  background: var(--viewer);
   color: var(--text);
   font-family: inherit;
   font-size: 0.95rem;
@@ -1215,7 +1226,7 @@ main {
   border-radius: var(--radius);
   background: rgba(34, 197, 94, 0.1);
   border: 1px solid rgba(34, 197, 94, 0.35);
-  color: #86EFAC;
+  color: #166534;
   font-size: 0.85rem;
 }
 
@@ -1227,7 +1238,7 @@ main {
   align-items: center;
   justify-content: center;
   padding: 24px;
-  background: rgba(2, 8, 20, 0.82);
+  background: rgba(42, 37, 34, 0.55);
   overflow: auto;
 }
 
@@ -1244,7 +1255,7 @@ main {
   border-radius: var(--radius);
   border: 1px solid var(--panel-border);
   background: var(--panel);
-  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.55);
+  box-shadow: 0 24px 60px rgba(60, 45, 30, 0.25);
 }
 
 .mask-editor-head {
@@ -1265,7 +1276,7 @@ main {
   margin-top: 14px;
   border-radius: var(--radius);
   border: 1px solid var(--panel-border);
-  background: #081120;
+  background: var(--viewer);
   overflow: hidden;
 }
 
@@ -1285,7 +1296,7 @@ main {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(8, 17, 32, 0.78);
+  background: rgba(246, 244, 240, 0.85);
   color: var(--text-secondary);
   font-size: 0.9rem;
 }
@@ -1331,7 +1342,7 @@ main {
   border-radius: 999px;
   border: 1px solid rgba(56, 189, 248, 0.45);
   background: rgba(56, 189, 248, 0.12);
-  color: #7DD3FC;
+  color: #0369A1;
   font-size: 0.75rem;
   letter-spacing: 0.04em;
 }
@@ -1339,7 +1350,7 @@ main {
 #mask-tool-smart.is-active {
   background: rgba(56, 189, 248, 0.2);
   border-color: rgba(56, 189, 248, 0.6);
-  color: #7DD3FC;
+  color: #0369A1;
 }
 
 /* The brush-mode toggles carry the same colours as the overlay legend, so
@@ -1347,13 +1358,13 @@ main {
 #mask-add.is-active {
   background: rgba(34, 197, 94, 0.22);
   border-color: rgba(34, 197, 94, 0.6);
-  color: #86EFAC;
+  color: #166534;
 }
 
 #mask-erase.is-active {
   background: var(--amber-bg);
   border-color: var(--amber-border);
-  color: #FCD34D;
+  color: #92400E;
 }
 
 body.is-modal-open {
@@ -1389,7 +1400,7 @@ body.is-modal-open {
     left: 0;
     right: 0;
     background: var(--bg);
-    border-bottom: 1px solid rgba(148, 163, 184, 0.15);
+    border-bottom: 1px solid rgba(120, 104, 88, 0.15);
     flex-direction: column;
     padding: 8px;
     display: none;
