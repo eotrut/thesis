@@ -1,7 +1,8 @@
 /* ==========================================================================
    AURA — Shared Navbar + Backend API helper  (DESKTOP APP COPY)
    Forked from website/nav.js for the desktop app (desktop/aura_desktop.py).
-   Differences: only the three app pages are in the navbar, and error text
+   Differences: only the app pages (the three tools plus Licenses) are in
+   the navbar, and error text
    talks about the app instead of `python backend/app.py`. In the app the
    pages are always served by the backend itself, so the API is same-origin.
    Renders the top navigation into <div id="navbar"></div> and highlights
@@ -166,7 +167,8 @@
     // Home, Results and About are not part of the app (panel, Oct 2026).
     { href: "dashboard.html", label: "Dashboard", id: "dashboard" },
     { href: "color-recommendation.html", label: "Color Recommendation", id: "color-recommendation" },
-    { href: "camera-view.html", label: "Camera View", id: "camera-view" }
+    { href: "camera-view.html", label: "Camera View", id: "camera-view" },
+    { href: "licenses.html", label: "Licenses", id: "licenses" }
   ];
 
   function renderNavbar() {

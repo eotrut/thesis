@@ -50,7 +50,9 @@ sys.path.insert(0, DESKTOP_DIR)
 
 import aura_desktop as shell  # noqa: E402  (pure helpers; pywebview is imported lazily)
 
-APP_PAGES = {"dashboard.html", "color-recommendation.html", "camera-view.html"}
+APP_PAGES = {"dashboard.html", "color-recommendation.html", "camera-view.html", "licenses.html"}
+# App-only pages with no website/ counterpart (the website stays unchanged).
+DESKTOP_ONLY_PAGES = {"licenses.html"}
 DROPPED_PAGES = {"index.html", "about.html", "results.html"}
 
 
@@ -249,7 +251,7 @@ print(json.dumps({{"autoinstall": u.AUTOINSTALL, "online": bool(u.is_online())}}
 
 
 def check_desktop_page_set(verbose: bool) -> list[str]:
-    """desktop/ui holds the three app pages only, and nothing links elsewhere."""
+    """desktop/ui holds the app pages only, and nothing links elsewhere."""
     failures = []
     pages = {f for f in os.listdir(UI_DIR) if f.endswith(".html")}
     if pages != APP_PAGES:
@@ -277,7 +279,7 @@ import json, sys
 sys.path.insert(0, %r)
 import app
 c = app.app.test_client()
-paths = ["/", "/dashboard.html", "/camera-view.html", "/color-recommendation.html",
+paths = ["/", "/dashboard.html", "/camera-view.html", "/color-recommendation.html", "/licenses.html",
          "/index.html", "/about.html", "/results.html", "/nav.js", "/style.css"]
 res = {}
 for p in paths:
@@ -309,7 +311,7 @@ print(json.dumps({"host": app.HOST, "web": app.WEBSITE_DIR, "res": res}))
     if website["host"] != "0.0.0.0":
         failures.append(f"website HOST changed to {website['host']!r}")
     wres = website["res"]
-    for page in APP_PAGES | DROPPED_PAGES:
+    for page in (APP_PAGES - DESKTOP_ONLY_PAGES) | DROPPED_PAGES:
         if wres["/" + page][0] != 200:
             failures.append(f"website /{page} -> {wres['/' + page][0]} (website/ must be unchanged)")
     if wres["/"][1] != wres["/index.html"][1]:
@@ -404,7 +406,7 @@ CHECKS = [
     ("camera auto-allow matches own origin only", check_origin_guard),
     ("AURA_DESKTOP_PORT parsing", check_port_parsing),
     ("app disables Ultralytics auto-install / online checks", check_no_runtime_installs),
-    ("desktop/ui holds only the three app pages", check_desktop_page_set),
+    ("desktop/ui holds only the app pages", check_desktop_page_set),
     ("desktop serves app pages; website mode unchanged", check_serving_modes),
     ("server: 127.0.0.1, free port, clean shutdown", check_server_lifecycle),
     ("Camera.close() cannot hang shutdown", check_camera_close_bounded),

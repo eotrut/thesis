@@ -15,7 +15,9 @@ What it does, in order:
 4. Copies best.pt and mobile_sam.pt from website/model/ into the build's
    model/ folder (they are git-ignored, so they are not in the repo).
 5. Adds README-FIRST.txt and BUILD-INFO.txt (exact versions, git commit).
-6. Prints the folder size, and with --zip writes desktop/dist/AURA-<F>.zip.
+6. Writes LICENSES.txt and a licenses/ folder of licence texts for every
+   package that actually shipped (desktop/write_licenses.py).
+7. Prints the folder size, and with --zip writes desktop/dist/AURA-<F>.zip.
 
 Must run with Python 3.11 (the version the app is pinned to). Takes 5-15 min;
 the first run also downloads torch (~200 MB CPU / ~2.5 GB CUDA).
@@ -139,10 +141,12 @@ def main() -> int:
         print(f"  {f}")
 
     shutil.copy2(os.path.join(DESKTOP, "README-FIRST.txt"), os.path.join(out, "README-FIRST.txt"))
-    for notice in ("LICENSES.txt", "NOTICE.txt"):
-        src = os.path.join(ROOT, notice)
-        if os.path.isfile(src):
-            shutil.copy2(src, os.path.join(out, notice))
+
+    # LICENSES.txt + licenses/: run in the build venv so the package metadata
+    # it reads is exactly what PyInstaller bundled (see write_licenses.py).
+    step("Writing LICENSES.txt and licenses\\")
+    run([py, os.path.join(DESKTOP, "write_licenses.py"),
+         os.path.join(BUILD, f"work-{flavor}", "aura"), out], env=env)
 
     freeze = output([py, "-m", "pip", "freeze"])
     with open(os.path.join(out, "BUILD-INFO.txt"), "w", encoding="utf-8") as fh:

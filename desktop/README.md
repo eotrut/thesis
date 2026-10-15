@@ -82,6 +82,21 @@ Fonts are bundled in `ui/assets/fonts/` and loaded locally, so the app needs no 
 
 The `.woff2` files are the Latin and Latin Extended subsets from the Fontsource 5.3.0 variable packages (`@fontsource-variable/fraunces`, `@fontsource-variable/dm-sans` on npm), which repackage the Google Fonts builds. The licence texts ship beside them (`OFL-Fraunces.txt`, `OFL-DMSans.txt`).
 
+## Licenses screen and LICENSES.txt
+
+The app's **Licenses** page (in the nav bar) credits everything bundled: the main components, the fonts, the training data and the 14 template photos. It also explains what Ultralytics' AGPL-3.0 licence requires and where to get the source. The data lives in `backend/credits.py` and is served by `GET /api/credits`. The photo credits come straight from `backend/color_templates.py`, so they cannot drift apart.
+
+Each build also gets, next to `AURA.exe`:
+
+- **`LICENSES.txt`**: the same credits, plus every Python package that actually shipped, with its version and the licence its own metadata declares.
+- **`licenses\`**: each shipped package's own licence and notice files, the Python runtime's licence, and the two font licences.
+
+`desktop/write_licenses.py` produces both, and `build.py` runs it with the build venv's Python. "Actually shipped" comes from PyInstaller's own inventories of what it packed (`PYZ-00.toc` and `COLLECT-00.toc` in `build/work-<flavour>/aura/`), so build-only tools such as pip are left out.
+
+**AGPL-3.0, in short:** Ultralytics YOLOv8 is AGPL-3.0, so anyone who receives AURA must be able to get the complete source for that exact version. That source is the public repository, and `BUILD-INFO.txt` names the commit.
+
+`python backend/tools/test_credits.py` checks that every bundled component, font and photo is credited. It also re-checks each stated licence against the installed package's metadata and runs the build writer against the last CPU build.
+
 ## Colour templates (Color Recommendation → Browse Templates)
 
 This is a second way into colour recommendation, alongside the camera scan, which is unchanged. There is one template per "who is this room for?" category, the same seven categories as `CATEGORY_BIAS`. Each template has:
@@ -125,6 +140,7 @@ All the backend's own `AURA_*` variables (see `backend/README.md`) still apply.
 
 ```powershell
 python backend/tools/test_desktop_shell.py
+python backend/tools/test_credits.py
 ```
 
-This covers path resolution (from source and as a simulated packaged build), the three-page set, `127.0.0.1` binding, clean server shutdown, and the camera-permission origin check. It needs no weights, GPU, webcam or window.
+The shell test covers path resolution (from source and as a simulated packaged build), the app's page set (the three tools plus Licenses), `127.0.0.1` binding, clean server shutdown, and the camera-permission origin check. It needs no weights, GPU, webcam or window.

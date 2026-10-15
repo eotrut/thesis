@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Licenses — AURA</title>
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    #lic-error[hidden] { display: none; }   /* .inference-status sets display */
+    .lic-note p { margin: 0 0 10px; }
+    .lic-note ul { margin: 0; padding-left: 20px; }
+    .lic-note li { margin: 0 0 8px; }
+    .lic-agpl { border-color: var(--amber-border); background: var(--amber-bg); }
+    .lic-agpl h3 { margin: 0 0 10px; }
+    .lic-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+    .lic-item h3 { margin: 0 0 4px; font-size: 1.1rem; }
+    .lic-item p { margin: 0 0 6px; font-size: 0.9rem; }
+    .lic-item .lic-role { color: var(--text-secondary); }
+    .lic-item .lic-small { font-size: 0.82rem; color: var(--text-secondary); }
+    .lic-badge {
+      display: inline-block; margin: 2px 0 8px; padding: 3px 10px; border-radius: 999px;
+      font-size: 0.75rem; font-weight: 600; color: var(--accent-hover);
+      background: rgba(164, 88, 58, 0.10); border: 1px solid rgba(164, 88, 58, 0.25);
+    }
+    .lic-badge.is-copyleft { color: var(--amber); background: var(--amber-bg); border-color: var(--amber-border); }
+    .lic-photos { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 16px; }
+    .lic-photo img {
+      width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: 10px;
+      background: var(--viewer); margin-bottom: 8px;
+    }
+    .lic-photo p { margin: 0 0 3px; font-size: 0.8rem; color: var(--text-secondary); }
+    .lic-photo p strong { color: var(--text); font-weight: 600; }
+    .lic-item a, .lic-note a, .lic-photo a { color: var(--accent-hover); text-decoration: underline; text-underline-offset: 2px; }
+    @media (max-width: 900px) { .lic-grid { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body data-page="licenses">
+
+  <div id="navbar"></div>
+
+  <main>
+    <div class="container">
+      <div class="page-header">
+        <p class="eyebrow">Licenses &amp; Credits</p>
+        <h1>Open-Source Licenses</h1>
+        <p>AURA is built on open-source software, open fonts and openly licensed photos. This page credits everything bundled in the app.</p>
+      </div>
+
+      <p class="inference-status is-error" id="lic-error" hidden></p>
+
+      <div class="section" style="padding-top: 0;">
+        <div class="card lic-note lic-agpl" id="lic-agpl"></div>
+      </div>
+
+      <div class="section" style="padding-top: 0;">
+        <h2 class="section-title">How to see the source</h2>
+        <div class="card lic-note" id="lic-source"></div>
+      </div>
+
+      <div class="section" style="padding-top: 0;">
+        <h2 class="section-title">Main components</h2>
+        <div class="lic-grid" id="lic-components"></div>
+      </div>
+
+      <div class="section" style="padding-top: 0;">
+        <h2 class="section-title">Fonts</h2>
+        <div class="lic-grid" id="lic-fonts"></div>
+        <p class="demo-note" id="lic-fonts-note"></p>
+      </div>
+
+      <div class="section" style="padding-top: 0;">
+        <h2 class="section-title">Training data</h2>
+        <div class="card lic-note" id="lic-dataset"></div>
+      </div>
+
+      <div class="section" style="padding-top: 0;">
+        <h2 class="section-title">Template photos</h2>
+        <div class="lic-photos" id="lic-photos"></div>
+        <p class="demo-note" id="lic-photos-note"></p>
+      </div>
+
+      <div class="section" style="padding-top: 0;">
+        <h2 class="section-title">Every bundled package</h2>
+        <div class="card lic-note">
+          <p>The installed app also contains the smaller libraries these components depend on. <strong>LICENSES.txt</strong> next to <strong>AURA.exe</strong> lists every one with its version and licence, and each package's own licence texts are in the <strong>licenses</strong> folder beside it.</p>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <div id="footer"></div>
+
+  <script src="nav.js"></script>
+  <script>
+    (function () {
+      function esc(s) {
+        return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
+          return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+        });
+      }
+      function link(url, text) {
+        return '<a href="' + esc(url) + '" target="_blank" rel="noopener">' + esc(text || url) + "</a>";
+      }
+      // Turn bare https:// URLs inside escaped text into links.
+      function linkify(text) {
+        return esc(text).replace(/https?:\/\/[^\s)"<]+[^\s)".,<]/g, function (u) {
+          return '<a href="' + u + '" target="_blank" rel="noopener">' + u + "</a>";
+        });
+      }
+      function list(items) {
+        return "<ul>" + items.map(function (t) { return "<li>" + linkify(t) + "</li>"; }).join("") + "</ul>";
+      }
+
+      function render(d) {
+        document.getElementById("lic-agpl").innerHTML =
+          "<h3>Ultralytics and the AGPL-3.0</h3>" + list(d.agpl);
+        document.getElementById("lic-source").innerHTML = list(d.source_note);
+
+        document.getElementById("lic-components").innerHTML = d.components.map(function (c) {
+          var copyleft = /AGPL|GPL/.test(c.license) && !/Exception/.test(c.license);
+          return '<div class="card lic-item">' +
+            "<h3>" + esc(c.name) + "</h3>" +
+            '<span class="lic-badge' + (copyleft ? " is-copyleft" : "") + '">' + esc(c.license) + "</span>" +
+            '<p class="lic-role">' + esc(c.role) + "</p>" +
+            '<p class="lic-small">© ' + esc(c.copyright) + "</p>" +
+            (c.note ? '<p class="lic-small">' + linkify(c.note) + "</p>" : "") +
+            '<p class="lic-small">' + link(c.url, "Project") + " · " + link(c.license_url, "Licence") + "</p>" +
+            "</div>";
+        }).join("");
+
+        document.getElementById("lic-fonts").innerHTML = d.fonts.map(function (f) {
+          return '<div class="card lic-item">' +
+            "<h3>" + esc(f.name) + "</h3>" +
+            '<span class="lic-badge">' + esc(f.license) + "</span>" +
+            '<p class="lic-role">' + esc(f.use) + "</p>" +
+            '<p class="lic-small">© ' + esc(f.author) + "</p>" +
+            '<p class="lic-small">' + link(f.url, "Project") + " · " + link(f.license_url, "Licence") + "</p>" +
+            "</div>";
+        }).join("");
+        document.getElementById("lic-fonts-note").textContent = d.fonts_packaging;
+
+        document.getElementById("lic-dataset").innerHTML =
+          "<p><strong>" + esc(d.dataset.name) + "</strong>: " + esc(d.dataset.where) + "</p>" +
+          "<p>" + esc(d.dataset.what) + "</p>" +
+          "<p>" + esc(d.dataset.shipped) + "</p>";
+
+        document.getElementById("lic-photos").innerHTML = d.photos.map(function (p) {
+          return '<div class="lic-photo">' +
+            '<img src="' + esc(p.file) + '" alt="' + esc(p.caption) + '" loading="lazy" />' +
+            "<p><strong>" + esc(p.author) + "</strong></p>" +
+            "<p>" + (p.license_url ? link(p.license_url, p.license) : esc(p.license)) + " · " + esc(p.origin) + "</p>" +
+            "<p>" + link(p.source, "Original file") + "</p>" +
+            "</div>";
+        }).join("");
+        document.getElementById("lic-photos-note").textContent = d.photos_note;
+      }
+
+      window.AURA.apiFetch("/api/credits", { timeoutMs: 10000 })
+        .then(function (d) {
+          if (!d.success) throw new Error(d.error || "no credits data");
+          render(d);
+        })
+        .catch(function (err) {
+          var el = document.getElementById("lic-error");
+          el.textContent = "Could not load the credits: " + err.message +
+            " The same information is in LICENSES.txt next to AURA.exe.";
+          el.hidden = false;
+        });
+    })();
+  </script>
+</body>
+</html>

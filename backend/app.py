@@ -19,6 +19,7 @@ Endpoints
 POST /api/segment   multipart image -> base64 original + masked overlay + detections
 POST /api/toolpath  multipart image -> mm-space serpentine paint path + G-code
 GET  /api/color-templates  demographic palettes (desktop app templates view)
+GET  /api/credits  licences and credits (desktop app Licenses screen)
 GET  /api/stream    MJPEG webcam stream, ?overlay=pre|during|post
 GET  /api/status    model / camera / CUDA status for the dashboard
 
@@ -57,6 +58,7 @@ from color_recommender import (  # noqa: E402
     recommend_colors,
 )
 from color_templates import templates_payload  # noqa: E402
+from credits import credits_payload  # noqa: E402
 from coordinate_mapping import (  # noqa: E402
     WALL_HEIGHT_MM,
     WALL_WIDTH_MM,
@@ -1101,6 +1103,19 @@ def api_color_templates():
 
 
 # --------------------------------------------------------------------------- #
+# API — GET /api/credits
+#
+# Licences and credits for the desktop app's Licenses screen: the main
+# components, fonts, training data, template photos, the AGPL-3.0 notes and
+# where to get the source. Pure data (see credits.py), like the templates.
+# --------------------------------------------------------------------------- #
+
+@app.route("/api/credits", methods=["GET"])
+def api_credits():
+    return jsonify({"success": True, **credits_payload()})
+
+
+# --------------------------------------------------------------------------- #
 # API — POST /api/toolpath
 #
 # The stage between segmentation and the (not yet written) serial link: segment
@@ -1505,7 +1520,7 @@ def startup_report() -> None:
     print("  " + "-" * 64)
     print("  Endpoints     : POST /api/segment   GET /api/stream?overlay=pre|during|post")
     print("                  GET  /api/status    GET /api/capture")
-    print("                  POST /api/recommend-colors  GET /api/color-templates")
+    print("                  POST /api/recommend-colors  GET /api/color-templates  GET /api/credits")
     print("                  POST /api/toolpath   POST /api/smart-select")
     print("  Mask editing  : optional 'mask_correction' field on the POST endpoints")
     print(f"  CORS          : enabled for all origins (file:// pages included)")
